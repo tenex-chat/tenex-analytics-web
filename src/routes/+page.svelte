@@ -1,16 +1,65 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import Card from '$lib/components/Card.svelte';
+	import LineChart from '$lib/components/LineChart.svelte';
+	import BarChart from '$lib/components/BarChart.svelte';
 	import { telemetry } from '$lib/stores/telemetry.js';
+	import { filters, filterParams } from '$lib/stores/filters.js';
 	import { formatNumber, formatCost, formatPercent } from '$lib/utils/format.js';
 
-	onMount(() => {
-		telemetry.fetchAll();
-	});
+	async function loadSummary() {
+		const from = $filters.from.toISOString().split('T')[0];
+		const to = $filters.to.toISOString().split('T')[0];
+		await telemetry.fetchAll({ from, to });
+	}
+
+	$: $filterParams, loadSummary();
 
 	$: summary = $telemetry.summary;
 	$: loading = $telemetry.loading;
 	$: error = $telemetry.error;
+
+	// Token usage chart data
+	let tokenPoints: Array<Record<string, number | string>> = [];
+	let tokenLoading = true;
+	let tokenError: string | null = null;
+
+	async function loadTokens() {
+		tokenLoading = true;
+		tokenError = null;
+		try {
+			const res = await fetch(`/api/tokens?${$filterParams}`);
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			const data = await res.json();
+			tokenPoints = data.points ?? [];
+		} catch (e) {
+			tokenError = (e as Error).message;
+		} finally {
+			tokenLoading = false;
+		}
+	}
+
+	// Cache chart data
+	let cacheByModel: Array<Record<string, number | string>> = [];
+	let cacheLoading = true;
+	let cacheError: string | null = null;
+
+	async function loadCache() {
+		cacheLoading = true;
+		cacheError = null;
+		try {
+			const res = await fetch(`/api/cache?${$filterParams}`);
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			const data = await res.json();
+			cacheByModel = data.byModel ?? [];
+		} catch (e) {
+			cacheError = (e as Error).message;
+		} finally {
+			cacheLoading = false;
+		}
+	}
+
+	$: $filterParams, loadTokens();
+	$: $filterParams, loadCache();
 </script>
 
 <svelte:head>
@@ -40,16 +89,31 @@
 <!-- Section: Token Usage -->
 <section class="chart-section" style="margin-top: 48px;">
 	<h2 class="section-label">Token Usage</h2>
-	<Card title="Token Usage Over Time" {loading} error={error ?? null}>
-		<div class="chart-placeholder">token trend chart — phase 2</div>
+	<Card title="Token Usage Over Time" loading={tokenLoading} error={tokenError}>
+		<LineChart
+			data={tokenPoints}
+			lines={[
+				{ key: 'inputTokens', label: 'Input', color: '#a1a1aa' },
+				{ key: 'outputTokens', label: 'Output', color: '#22c55e' },
+				{ key: 'cacheReadTokens', label: 'Cache Read', color: '#eab308' }
+			]}
+			xKey="date"
+			height={240}
+		/>
 	</Card>
 </section>
 
 <!-- Section: Cache by Model -->
 <section class="chart-section" style="margin-top: 40px;">
 	<h2 class="section-label">Cache by Model</h2>
-	<Card title="Cache Performance by Model" {loading} error={error ?? null}>
-		<div class="chart-placeholder">cache breakdown chart — phase 2</div>
+	<Card title="Cache Performance by Model" loading={cacheLoading} error={cacheError}>
+		<BarChart
+			data={cacheByModel}
+			bars={[{ key: 'efficiencyPercent', label: 'Efficiency %', color: '#22c55e' }]}
+			xKey="label"
+			height={200}
+			horizontal={true}
+		/>
 	</Card>
 </section>
 
@@ -111,15 +175,5 @@
 
 	.chart-section {
 		margin-bottom: 40px;
-	}
-
-	/* Chart placeholder */
-	.chart-placeholder {
-		height: 200px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: 12px;
-		color: var(--dim);
 	}
 </style>

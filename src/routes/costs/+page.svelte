@@ -1,9 +1,8 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
 	import Card from '$lib/components/Card.svelte';
 	import LineChart from '$lib/components/LineChart.svelte';
 	import BarChart from '$lib/components/BarChart.svelte';
+	import { filterParams } from '$lib/stores/filters.js';
 	import { formatCost } from '$lib/utils/format.js';
 	import { CHART_COLORS } from '$lib/utils/colors.js';
 
@@ -13,10 +12,11 @@
 	let loading = true;
 	let error: string | null = null;
 
-	onMount(async () => {
+	async function load() {
+		loading = true;
+		error = null;
 		try {
-			const params = new URLSearchParams($page.url.searchParams);
-			const res = await fetch(`/api/cost?${params}`);
+			const res = await fetch(`/api/cost?${$filterParams}`);
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			const data = await res.json();
 			trends = data.trends ?? [];
@@ -27,10 +27,13 @@
 		} finally {
 			loading = false;
 		}
-	});
+	}
+
+	$: $filterParams, load();
 
 	$: totalCost = trends.reduce((sum, t) => sum + Number(t.totalCost), 0);
-	$: mostExpensiveModel = byModel.length > 0 ? (byModel[0].model as string) : '—';
+	$: modelsUsed = byModel.length;
+	$: agentsUsed = byAgent.length;
 </script>
 
 <svelte:head><title>Cost Analysis — TENEX Analytics</title></svelte:head>
@@ -38,17 +41,21 @@
 <div class="page">
 	<h1 class="page-title">Cost Analysis</h1>
 
-	<section class="metrics-grid">
-		<Card title="Total Cost" {loading}>
-			<div class="metric-value">{formatCost(totalCost)}</div>
-		</Card>
-		<Card title="Most Expensive Model" {loading}>
-			<div class="metric-value model-name">{mostExpensiveModel}</div>
-			{#if byModel.length > 0}
-				<div class="metric-sub">{formatCost(Number(byModel[0].totalCost))}</div>
-			{/if}
-		</Card>
-	</section>
+	<!-- Summary metrics strip -->
+	<dl class="metrics">
+		<div class="metric">
+			<dt>Total Cost</dt>
+			<dd>{loading ? '—' : formatCost(totalCost)}</dd>
+		</div>
+		<div class="metric">
+			<dt>Models Used</dt>
+			<dd>{loading ? '—' : modelsUsed}</dd>
+		</div>
+		<div class="metric last">
+			<dt>Agents Used</dt>
+			<dd>{loading ? '—' : agentsUsed}</dd>
+		</div>
+	</dl>
 
 	<Card title="Daily Cost Over Time" {loading} error={error}>
 		<LineChart
@@ -80,14 +87,52 @@
 			/>
 		</Card>
 	</div>
+
+	<!-- Table: cost by model -->
+	<Card title="Cost by Model — Detail" {loading}>
+		{#if byModel.length === 0}
+			<p class="empty">No data available</p>
+		{:else}
+			<div class="table-wrap">
+				<table class="data-table">
+					<thead>
+						<tr>
+							<th>Model</th>
+							<th class="num">Total Cost</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each byModel as row}
+							<tr>
+								<td>{row.model}</td>
+								<td class="num">{formatCost(Number(row.totalCost), 4)}</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		{/if}
+	</Card>
 </div>
 
 <style>
 	.page { display: flex; flex-direction: column; gap: 1.5rem; }
 	.page-title { font-size: 1.5rem; font-weight: 700; color: var(--text); }
-	.metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+
+	/* Metrics strip */
+	.metrics { display: flex; margin: 0; padding: 0; list-style: none; flex-wrap: wrap; }
+	.metric { flex: 1; min-width: 140px; padding: 0 24px; border-right: 1px solid var(--border); }
+	.metric:first-child { padding-left: 0; }
+	.metric.last { border-right: none; }
+	.metric dt { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 6px; }
+	.metric dd { font-size: 24px; font-weight: 600; color: var(--text); line-height: 1; margin: 0; }
+
 	.charts-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1rem; }
-	.metric-value { font-size: 2rem; font-weight: 700; color: var(--text); }
-	.metric-value.model-name { font-size: 1.125rem; word-break: break-all; }
-	.metric-sub { font-size: 0.8125rem; color: var(--muted); margin-top: 0.25rem; }
+	.table-wrap { overflow-x: auto; }
+	.data-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+	.data-table th { text-align: left; padding: 0.5rem 0.75rem; color: var(--muted); border-bottom: 1px solid var(--border); font-weight: 500; }
+	.data-table td { padding: 0.5rem 0.75rem; color: var(--text); border-bottom: 1px solid var(--border); }
+	.data-table tr:last-child td { border-bottom: none; }
+	.num { text-align: right; }
+	.empty { color: var(--muted); font-size: 0.875rem; padding: 1rem 0; }
 </style>

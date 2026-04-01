@@ -1,8 +1,7 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
 	import Card from '$lib/components/Card.svelte';
 	import LineChart from '$lib/components/LineChart.svelte';
+	import { filterParams } from '$lib/stores/filters.js';
 	import { formatNumber } from '$lib/utils/format.js';
 	import { CHART_COLORS } from '$lib/utils/colors.js';
 
@@ -19,9 +18,7 @@
 		loading = true;
 		error = null;
 		try {
-			const params = new URLSearchParams($page.url.searchParams);
-			params.set('granularity', granularity);
-			const res = await fetch(`/api/tokens?${params}`);
+			const res = await fetch(`/api/tokens?${$filterParams}&granularity=${granularity}`);
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			const data = await res.json();
 			points = data.points ?? [];
@@ -32,10 +29,13 @@
 		}
 	}
 
-	onMount(fetchData);
-
+	$: $filterParams, fetchData();
 	$: granularity, fetchData();
 
+	$: totalInput = points.reduce((s, p) => s + p.inputTokens, 0);
+	$: totalOutput = points.reduce((s, p) => s + p.outputTokens, 0);
+	$: totalCacheRead = points.reduce((s, p) => s + p.cacheReadTokens, 0);
+	$: totalCacheWrite = points.reduce((s, p) => s + p.cacheWriteTokens, 0);
 	$: topPoints = [...points].sort((a, b) => b.totalTokens - a.totalTokens).slice(0, 10);
 </script>
 
@@ -54,6 +54,26 @@
 			{/each}
 		</div>
 	</div>
+
+	<!-- Summary metrics strip -->
+	<dl class="metrics">
+		<div class="metric">
+			<dt>Total Input</dt>
+			<dd>{loading ? '—' : formatNumber(totalInput)}</dd>
+		</div>
+		<div class="metric">
+			<dt>Total Output</dt>
+			<dd>{loading ? '—' : formatNumber(totalOutput)}</dd>
+		</div>
+		<div class="metric">
+			<dt>Cache Read</dt>
+			<dd class="accent-green">{loading ? '—' : formatNumber(totalCacheRead)}</dd>
+		</div>
+		<div class="metric last">
+			<dt>Cache Write</dt>
+			<dd>{loading ? '—' : formatNumber(totalCacheWrite)}</dd>
+		</div>
+	</dl>
 
 	<Card title="Token Usage Over Time" {loading} error={error}>
 		<LineChart
@@ -109,6 +129,16 @@
 	.granularity-toggle { display: flex; gap: 0.25rem; }
 	.toggle-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 0.375rem 0.875rem; border-radius: var(--radius); font-size: 0.8125rem; cursor: pointer; text-transform: capitalize; }
 	.toggle-btn.active { background: var(--surface); border-color: var(--border); color: var(--text); }
+
+	/* Metrics strip */
+	.metrics { display: flex; margin: 0; padding: 0; list-style: none; flex-wrap: wrap; gap: 0; }
+	.metric { flex: 1; min-width: 140px; padding: 0 24px; border-right: 1px solid var(--border); }
+	.metric:first-child { padding-left: 0; }
+	.metric.last { border-right: none; }
+	.metric dt { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 6px; }
+	.metric dd { font-size: 24px; font-weight: 600; color: var(--text); line-height: 1; margin: 0; }
+	.metric dd.accent-green { color: var(--green); }
+
 	.table-wrap { overflow-x: auto; }
 	.data-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
 	.data-table th { text-align: left; padding: 0.5rem 0.75rem; color: var(--muted); border-bottom: 1px solid var(--border); font-weight: 500; }

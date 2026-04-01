@@ -1,6 +1,7 @@
 <script lang="ts">
   import '../app.css';
   import { page } from '$app/stores';
+  import FilterBar from '$lib/components/FilterBar.svelte';
 </script>
 
 <header>
@@ -16,6 +17,7 @@
     </nav>
   </div>
 </header>
+<FilterBar />
 <main>
   <slot />
 </main>

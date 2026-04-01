@@ -53,17 +53,21 @@
 		<div class="error-banner">{error}</div>
 	{/if}
 
-	<section class="metrics-grid">
-		<Card title="Total Tokens" {loading}>
-			<div class="metric-value">{formatNumber(totalTokens)}</div>
-		</Card>
-		<Card title="Total Cost" {loading}>
-			<div class="metric-value">{formatCost(totalCost)}</div>
-		</Card>
-		<Card title="Requests" {loading}>
-			<div class="metric-value">{requests.length}</div>
-		</Card>
-	</section>
+	<!-- Summary metrics strip — no card wrappers -->
+	<dl class="metrics">
+		<div class="metric">
+			<dt>Total Tokens</dt>
+			<dd>{loading ? '—' : formatNumber(totalTokens)}</dd>
+		</div>
+		<div class="metric">
+			<dt>Total Cost</dt>
+			<dd>{loading ? '—' : formatCost(totalCost)}</dd>
+		</div>
+		<div class="metric last">
+			<dt>Requests</dt>
+			<dd>{loading ? '—' : requests.length}</dd>
+		</div>
+	</dl>
 
 	<Card title="Request Timeline" {loading}>
 		{#if requests.length === 0}
@@ -130,8 +134,15 @@
 	.back-link:hover { color: var(--text); text-decoration: underline; }
 	.page-title { font-size: 1.5rem; font-weight: 700; color: var(--text); }
 	.conv-id { font-family: monospace; font-size: 0.8125rem; color: var(--muted); word-break: break-all; }
-	.metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
-	.metric-value { font-size: 2rem; font-weight: 700; color: var(--text); }
+
+	/* Metrics strip */
+	.metrics { display: flex; margin: 0; padding: 0; list-style: none; flex-wrap: wrap; }
+	.metric { flex: 1; min-width: 140px; padding: 0 24px; border-right: 1px solid var(--border); }
+	.metric:first-child { padding-left: 0; }
+	.metric.last { border-right: none; }
+	.metric dt { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 6px; }
+	.metric dd { font-size: 24px; font-weight: 600; color: var(--text); line-height: 1; margin: 0; }
+
 	.timeline { display: flex; flex-direction: column; gap: 0.5rem; }
 	.request-card { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 	.request-header { width: 100%; display: flex; align-items: center; gap: 1rem; padding: 0.75rem 1rem; background: transparent; border: none; cursor: pointer; color: var(--text); text-align: left; }
@@ -141,9 +152,9 @@
 	.req-model { font-size: 0.8125rem; font-weight: 500; }
 	.req-tokens { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; flex: 1; }
 	.token-pill { font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 9999px; }
-	.token-pill.in { background: #1e1b4b; color: #a5b4fc; }
-	.token-pill.out { background: #0c4a6e; color: #7dd3fc; }
-	.token-pill.cache { background: #14532d; color: #86efac; }
+	.token-pill.in { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+	.token-pill.out { background: var(--surface); border: 1px solid var(--border); color: var(--green); }
+	.token-pill.cache { background: var(--surface); border: 1px solid var(--border); color: var(--yellow, #eab308); }
 	.req-cost { font-size: 0.8125rem; color: var(--muted); margin-left: auto; }
 	.expand-icon { font-size: 0.6875rem; color: var(--muted); }
 	.messages { padding: 0.75rem 1rem; border-top: 1px solid var(--border); background: var(--surface); }
@@ -155,10 +166,10 @@
 	.dim { color: var(--muted); }
 	.preview { font-size: 0.75rem; color: var(--muted); max-width: 30rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.role-badge { display: inline-block; padding: 0.125rem 0.5rem; border-radius: 4px; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; }
-	.role-user { background: #1e3a5f; color: #93c5fd; }
-	.role-assistant { background: #2d1b69; color: #c4b5fd; }
-	.role-system { background: #1c1917; color: #d6d3d1; }
+	.role-user { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+	.role-assistant { background: var(--surface); border: 1px solid var(--border); color: var(--muted); }
+	.role-system { background: var(--surface); border: 1px solid var(--border); color: var(--dim); }
 	.no-msgs { color: var(--muted); font-size: 0.875rem; }
 	.empty { color: var(--muted); font-size: 0.875rem; padding: 1rem 0; }
-	.error-banner { background: #7f1d1d; border: 1px solid var(--red); color: #fca5a5; padding: 0.75rem 1rem; border-radius: var(--radius); font-size: 0.875rem; }
+	.error-banner { background: var(--surface); border: 1px solid var(--red); color: var(--red); padding: 0.75rem 1rem; border-radius: var(--radius); font-size: 0.875rem; }
 </style>

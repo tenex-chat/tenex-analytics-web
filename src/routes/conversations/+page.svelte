@@ -1,8 +1,7 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
 	import Card from '$lib/components/Card.svelte';
+	import { filterParams } from '$lib/stores/filters.js';
 	import { formatNumber, formatCost } from '$lib/utils/format.js';
 
 	interface Conversation {
@@ -19,19 +18,22 @@
 	let loading = true;
 	let error: string | null = null;
 
-	onMount(async () => {
+	async function load() {
+		loading = true;
+		error = null;
 		try {
-			const params = new URLSearchParams($page.url.searchParams);
-			const res = await fetch(`/api/conversations?${params}`);
+			const res = await fetch(`/api/conversations?${$filterParams}`);
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			const data = await res.json();
-			conversations = data.conversations ?? [];
+			conversations = (data.conversations ?? []).slice(0, 50);
 		} catch (e) {
 			error = (e as Error).message;
 		} finally {
 			loading = false;
 		}
-	});
+	}
+
+	$: $filterParams, load();
 
 	function truncate(s: string, n = 20) {
 		return s.length > n ? s.slice(0, n) + '…' : s;
