@@ -78,9 +78,12 @@ export function buildDateFilter(
 		params.from = new Date(range.from).getTime();
 	}
 	if (range.to) {
-		// Include the full day by going to 23:59:59.999
 		const toDate = new Date(range.to);
-		toDate.setHours(23, 59, 59, 999);
+		// Only expand to end-of-day for date-only strings (YYYY-MM-DD).
+		// Full ISO timestamps (containing 'T') already encode hour precision — pass through untouched.
+		if (!range.to.includes('T')) {
+			toDate.setHours(23, 59, 59, 999);
+		}
 		conditions.push(`${column} <= @to`);
 		params.to = toDate.getTime();
 	}

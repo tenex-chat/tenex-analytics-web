@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { filters } from '$lib/stores/filters.js';
 	import { formatDate } from '$lib/utils/format.js';
+	import type { TimePreset } from '$lib/stores/filters.js';
 
 	interface FilterOptions {
 		projects: string[];
@@ -12,12 +13,21 @@
 
 	let options: FilterOptions = { projects: [], agents: [], providers: [], models: [] };
 
-	// Local bound values — sync from store on init
+	// Local bound values for custom date pickers
 	let fromVal = formatDate($filters.from);
 	let toVal = formatDate($filters.to);
 	let projectVal = $filters.project ?? '';
 	let agentVal = $filters.agent ?? '';
 	let modelVal = $filters.model ?? '';
+
+	const PRESETS: { label: string; value: TimePreset }[] = [
+		{ label: '15m', value: '15m' },
+		{ label: '1h', value: '1h' },
+		{ label: '4h', value: '4h' },
+		{ label: '12h', value: '12h' },
+		{ label: '24h', value: '24h' },
+		{ label: 'Custom', value: 'custom' }
+	];
 
 	onMount(async () => {
 		try {
@@ -28,16 +38,24 @@
 		}
 	});
 
+	function applyPreset(preset: TimePreset) {
+		filters.setPreset(preset);
+		if (preset !== 'custom') {
+			fromVal = formatDate($filters.from);
+			toVal = formatDate($filters.to);
+		}
+	}
+
 	function applyFrom(e: Event) {
 		const val = (e.currentTarget as HTMLInputElement).value;
 		fromVal = val;
-		if (val) filters.update((s) => ({ ...s, from: new Date(val) }));
+		if (val) filters.update((s) => ({ ...s, from: new Date(val), preset: 'custom' }));
 	}
 
 	function applyTo(e: Event) {
 		const val = (e.currentTarget as HTMLInputElement).value;
 		toVal = val;
-		if (val) filters.update((s) => ({ ...s, to: new Date(val) }));
+		if (val) filters.update((s) => ({ ...s, to: new Date(val), preset: 'custom' }));
 	}
 
 	function applyProject(e: Event) {
@@ -67,30 +85,48 @@
 		modelVal = '';
 	}
 
+	$: activePreset = $filters.preset;
 	$: hasFilters = projectVal || agentVal || modelVal;
 </script>
 
 <div class="filter-bar">
 	<div class="filter-row">
 		<div class="filter-group">
-			<label class="filter-label">From</label>
-			<input
-				type="date"
-				class="filter-input"
-				value={fromVal}
-				on:change={applyFrom}
-			/>
+			<span class="filter-label">Time Range</span>
+			<div class="preset-group">
+				{#each PRESETS as p}
+					<button
+						class="preset-btn"
+						class:active={activePreset === p.value}
+						on:click={() => applyPreset(p.value)}
+					>
+						{p.label}
+					</button>
+				{/each}
+			</div>
 		</div>
 
-		<div class="filter-group">
-			<label class="filter-label">To</label>
-			<input
-				type="date"
-				class="filter-input"
-				value={toVal}
-				on:change={applyTo}
-			/>
-		</div>
+		{#if activePreset === 'custom'}
+			<div class="filter-group">
+				<label class="filter-label">From</label>
+				<input
+					type="date"
+					class="filter-input"
+					value={fromVal}
+					on:change={applyFrom}
+				/>
+			</div>
+
+			<div class="filter-group">
+				<label class="filter-label">To</label>
+				<input
+					type="date"
+					class="filter-input"
+					value={toVal}
+					on:change={applyTo}
+				/>
+			</div>
+		{/if}
 
 		{#if options.projects.length > 0}
 			<div class="filter-group">
@@ -162,6 +198,47 @@
 		color: var(--muted);
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
+	}
+
+	.preset-group {
+		display: flex;
+		gap: 0;
+		height: 2rem;
+	}
+
+	.preset-btn {
+		background: var(--bg);
+		border: 1px solid var(--border);
+		color: var(--muted);
+		font-size: 0.8125rem;
+		padding: 0 0.75rem;
+		cursor: pointer;
+		margin-left: -1px;
+		transition: color 0.1s, background 0.1s;
+	}
+
+	.preset-btn:first-child {
+		border-radius: var(--radius) 0 0 var(--radius);
+		margin-left: 0;
+	}
+
+	.preset-btn:last-child {
+		border-radius: 0 var(--radius) var(--radius) 0;
+	}
+
+	.preset-btn:hover {
+		color: var(--text);
+		border-color: var(--muted);
+		z-index: 1;
+		position: relative;
+	}
+
+	.preset-btn.active {
+		background: var(--muted);
+		color: var(--bg);
+		border-color: var(--muted);
+		z-index: 2;
+		position: relative;
 	}
 
 	.filter-select,
