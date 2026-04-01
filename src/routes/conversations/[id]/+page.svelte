@@ -2,7 +2,10 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import Card from '$lib/components/Card.svelte';
+	import LineChart from '$lib/components/LineChart.svelte';
 	import { formatNumber, formatCost } from '$lib/utils/format.js';
+	import { SERIES_COLORS } from '$lib/utils/colors.js';
+	import type { ConversationStats } from '$lib/api/types.js';
 
 	interface Message { role: string; classification: string; tokenCount: number; contentPreview: string; }
 	interface LLMRequest { id: string; timestamp: string; model: string; inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number; totalCostUsd: number; messages: Message[]; }
@@ -13,21 +16,48 @@
 	let error: string | null = null;
 	let expanded = new Set<string>();
 
+	let stats: ConversationStats | null = null;
+	let statsLoading = true;
+	let statsError: string | null = null;
+
 	$: id = $page.params.id ?? '';
 
 	onMount(async () => {
 		conversationId = id;
-		try {
-			const res = await fetch(`/api/conversations/${encodeURIComponent(id)}`);
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			const data = await res.json();
-			conversationId = data.conversationId ?? id;
-			requests = data.requests ?? [];
-		} catch (e) {
-			error = (e as Error).message;
-		} finally {
-			loading = false;
+		const encodedId = encodeURIComponent(id);
+
+		const [detailRes, statsRes] = await Promise.allSettled([
+			fetch(`/api/conversations/${encodedId}`),
+			fetch(`/api/conversations/${encodedId}/stats`)
+		]);
+
+		// Detail
+		if (detailRes.status === 'fulfilled') {
+			try {
+				if (!detailRes.value.ok) throw new Error(`HTTP ${detailRes.value.status}`);
+				const data = await detailRes.value.json();
+				conversationId = data.conversationId ?? id;
+				requests = data.requests ?? [];
+			} catch (e) {
+				error = (e as Error).message;
+			}
+		} else {
+			error = detailRes.reason?.message ?? 'Failed to load';
 		}
+		loading = false;
+
+		// Stats
+		if (statsRes.status === 'fulfilled') {
+			try {
+				if (!statsRes.value.ok) throw new Error(`HTTP ${statsRes.value.status}`);
+				stats = await statsRes.value.json();
+			} catch (e) {
+				statsError = (e as Error).message;
+			}
+		} else {
+			statsError = statsRes.reason?.message ?? 'Failed to load stats';
+		}
+		statsLoading = false;
 	});
 
 	$: totalTokens = requests.reduce((s, r) => s + r.inputTokens + r.outputTokens + r.cacheReadTokens + r.cacheWriteTokens, 0);
@@ -38,6 +68,19 @@
 		else expanded.add(id);
 		expanded = new Set(expanded);
 	}
+
+	function formatDuration(seconds: number): string {
+		if (seconds < 60) return `${Math.round(seconds)}s`;
+		if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+		return `${(seconds / 3600).toFixed(1)}h`;
+	}
+
+	$: chartData = stats?.timeSeries.map((p, i) => ({
+		label: `#${i + 1}`,
+		tokensUsed: p.tokensUsed,
+		messageCount: p.messageCount,
+		toolCallsStripped: p.toolCallsStripped
+	})) ?? [];
 </script>
 
 <svelte:head><title>Conversation — TENEX Analytics</title></svelte:head>
@@ -68,6 +111,86 @@
 			<dd>{loading ? '—' : requests.length}</dd>
 		</div>
 	</dl>
+
+	<!-- Growth Stats section -->
+	<Card title="Conversation Metrics" loading={statsLoading} error={statsError}>
+		{#if stats && stats.timeSeries.length > 0}
+			<!-- Stat cards row -->
+			<dl class="stat-grid">
+				<div class="stat">
+					<dt>Mean Tokens / Request</dt>
+					<dd>{formatNumber(Math.round(stats.summary.meanTokensPerRequest))}</dd>
+				</div>
+				<div class="stat">
+					<dt>Median Tokens</dt>
+					<dd>{formatNumber(stats.summary.medianTokens)}</dd>
+				</div>
+				<div class="stat">
+					<dt>Min / Max Tokens</dt>
+					<dd>{formatNumber(stats.summary.minTokens)} / {formatNumber(stats.summary.maxTokens)}</dd>
+				</div>
+				<div class="stat">
+					<dt>Avg Messages / Request</dt>
+					<dd>{stats.summary.avgMessagesPerRequest.toFixed(1)}</dd>
+				</div>
+				<div class="stat">
+					<dt>Total Tool Calls</dt>
+					<dd>{formatNumber(stats.summary.totalToolCalls)}</dd>
+				</div>
+				<div class="stat">
+					<dt>Tool Uses Removed</dt>
+					<dd class:highlight-red={stats.summary.totalToolCallsStripped > 0}>{formatNumber(stats.summary.totalToolCallsStripped)}</dd>
+				</div>
+				<div class="stat last">
+					<dt>Duration</dt>
+					<dd>{formatDuration(stats.summary.conversationDurationSeconds)}</dd>
+				</div>
+			</dl>
+
+			<!-- Token growth chart -->
+			<div class="chart-section">
+				<p class="chart-label">Tokens per Request</p>
+				<LineChart
+					data={chartData}
+					lines={[
+						{ key: 'tokensUsed', label: 'Tokens Used', color: SERIES_COLORS[0] },
+					]}
+					xKey="label"
+					height={220}
+				/>
+			</div>
+
+			{#if stats.timeSeries.some(p => p.messageCount > 0)}
+				<div class="chart-section">
+					<p class="chart-label">Message Count per Request</p>
+					<LineChart
+						data={chartData}
+						lines={[
+							{ key: 'messageCount', label: 'Messages', color: SERIES_COLORS[1] },
+						]}
+						xKey="label"
+						height={180}
+					/>
+				</div>
+			{/if}
+
+			{#if stats.summary.totalToolCallsStripped > 0}
+				<div class="chart-section">
+					<p class="chart-label">Tool Uses Removed by Anthropic (per Request)</p>
+					<LineChart
+						data={chartData}
+						lines={[
+							{ key: 'toolCallsStripped', label: 'Removed', color: SERIES_COLORS[4] },
+						]}
+						xKey="label"
+						height={160}
+					/>
+				</div>
+			{/if}
+		{:else if stats}
+			<p class="empty">No stats available for this conversation</p>
+		{/if}
+	</Card>
 
 	<Card title="Request Timeline" {loading}>
 		{#if requests.length === 0}
@@ -142,6 +265,17 @@
 	.metric.last { border-right: none; }
 	.metric dt { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 6px; }
 	.metric dd { font-size: 24px; font-weight: 600; color: var(--text); line-height: 1; margin: 0; }
+
+	/* Stats grid in conversation metrics card */
+	.stat-grid { display: flex; margin: 0 0 20px 0; padding: 0; list-style: none; flex-wrap: wrap; gap: 0; }
+	.stat { flex: 1; min-width: 120px; padding: 0 20px 16px 0; border-right: 1px solid var(--border); margin-right: 20px; }
+	.stat.last { border-right: none; margin-right: 0; }
+	.stat dt { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 4px; }
+	.stat dd { font-size: 20px; font-weight: 600; color: var(--text); line-height: 1; margin: 0; }
+	.stat dd.highlight-red { color: var(--red); }
+
+	.chart-section { margin-top: 16px; }
+	.chart-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dim); margin: 0 0 8px 0; }
 
 	.timeline { display: flex; flex-direction: column; gap: 0.5rem; }
 	.request-card { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }

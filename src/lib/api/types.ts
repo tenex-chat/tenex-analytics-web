@@ -100,6 +100,33 @@ export interface ApiError {
 	statusCode: number;
 }
 
+// ─── Conversation Growth Stats ───────────────────────────────────────────────
+
+export interface ConversationStatPoint {
+	timestamp: string; // ISO datetime
+	tokensUsed: number; // input + output
+	messageCount: number;
+	toolCallsCount: number;
+	toolCallsStripped: number; // removed_tool_exchanges_delta from context_management_events
+}
+
+export interface ConversationStatSummary {
+	meanTokensPerRequest: number;
+	avgMessagesPerRequest: number;
+	totalToolCalls: number;
+	totalToolCallsStripped: number;
+	minTokens: number;
+	maxTokens: number;
+	medianTokens: number;
+	conversationDurationSeconds: number;
+}
+
+export interface ConversationStats {
+	conversationId: string;
+	timeSeries: ConversationStatPoint[];
+	summary: ConversationStatSummary;
+}
+
 // ─── Query Parameters ────────────────────────────────────────────────────────
 
 export interface DateRangeParams {
