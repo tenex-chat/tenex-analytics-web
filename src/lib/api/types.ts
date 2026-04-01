@@ -104,10 +104,17 @@ export interface ApiError {
 
 export interface ConversationStatPoint {
 	timestamp: string; // ISO datetime
-	tokensUsed: number; // input + output
+	tokensUsed: number; // input + output (no cache)
+	inputTokens: number;
+	outputTokens: number;
+	cacheReadTokens: number;
+	cacheWriteTokens: number;
 	messageCount: number;
-	toolCallsCount: number;
+	toolCallsCount: number; // classification = 'tool_use' messages
+	toolResultsCount: number; // classification = 'tool_result' messages
 	toolCallsStripped: number; // removed_tool_exchanges_delta from context_management_events
+	contextManagementEvent: number; // 1 if a context_management_event fired, else 0
+	anthropicClearToolUses: number; // 1 if anthropic_clear_tool_uses_enabled was set
 }
 
 export interface ConversationStatSummary {
@@ -119,6 +126,11 @@ export interface ConversationStatSummary {
 	maxTokens: number;
 	medianTokens: number;
 	conversationDurationSeconds: number;
+	totalCacheReadTokens: number;
+	totalCacheWriteTokens: number;
+	requestsWithCacheHits: number; // requests where cacheReadTokens > 0
+	requestsWithContextManagement: number; // requests that triggered a context management event
+	requestsWithAnthropicToolClear: number; // requests where Anthropic stripped tools server-side
 }
 
 export interface ConversationStats {
