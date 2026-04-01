@@ -115,6 +115,12 @@ export interface ConversationStatPoint {
 	toolCallsStripped: number; // removed_tool_exchanges_delta from context_management_events
 	contextManagementEvent: number; // 1 if a context_management_event fired, else 0
 	anthropicClearToolUses: number; // 1 if anthropic_clear_tool_uses_enabled was set
+	roleTokens: {
+		system: number;
+		user: number;
+		assistant: number;
+		tool: number; // tool_result messages
+	};
 }
 
 export interface ConversationStatSummary {
