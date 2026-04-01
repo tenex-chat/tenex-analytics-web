@@ -148,17 +148,6 @@ export const GET: RequestHandler = ({ url }) => {
 	const costDistribution = Object.entries(costBuckets).map(([bucket, count]) => ({ bucket, count }));
 
 	// ── Daily new conversations ───────────────────────────────────────────────
-	const dailyRows = db.prepare(`
-		SELECT
-			date(MIN(started_at_ms)/1000, 'unixepoch') AS date,
-			COUNT(DISTINCT conversation_id) AS count
-		FROM llm_requests
-		${whereClause}
-		GROUP BY date(MIN(started_at_ms)/1000, 'unixepoch')
-		ORDER BY date ASC
-	`).all(params) as Array<{ date: string; count: number }>;
-
-	// The above won't work because we need to group by conv first, then by date
 	const dailyRowsFixed = db.prepare(`
 		SELECT date, COUNT(*) AS count
 		FROM (
