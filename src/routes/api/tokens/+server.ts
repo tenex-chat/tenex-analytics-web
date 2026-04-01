@@ -15,24 +15,28 @@ export const GET: RequestHandler = ({ url }) => {
 	const { clause, params } = buildDateFilter(range);
 	const db = getDb();
 
+	const statusClause = clause
+		? clause + " AND status = 'success'"
+		: "WHERE status = 'success'";
+
 	const groupExpr =
 		granularity === 'hour'
-			? "strftime('%Y-%m-%dT%H:00:00', created_at, 'unixepoch')"
+			? "strftime('%Y-%m-%dT%H:00:00', started_at_ms/1000, 'unixepoch')"
 			: granularity === 'week'
-				? "strftime('%Y-W%W', created_at, 'unixepoch')"
-				: "date(created_at, 'unixepoch')";
+				? "strftime('%Y-W%W', started_at_ms/1000, 'unixepoch')"
+				: "date(started_at_ms/1000, 'unixepoch')";
 
 	const rows = db.prepare(`
 		SELECT
-			${groupExpr}                                AS date,
-			COALESCE(SUM(input_tokens), 0)              AS inputTokens,
-			COALESCE(SUM(output_tokens), 0)             AS outputTokens,
-			COALESCE(SUM(cache_read_tokens), 0)         AS cacheReadTokens,
-			COALESCE(SUM(cache_write_tokens), 0)        AS cacheWriteTokens,
-			COALESCE(SUM(input_tokens + output_tokens + cache_read_tokens + cache_write_tokens), 0) AS totalTokens,
-			COUNT(*)                                    AS requests
-		FROM llm_usage
-		${clause}
+			${groupExpr}                                        AS date,
+			COALESCE(SUM(input_tokens), 0)                      AS inputTokens,
+			COALESCE(SUM(output_tokens), 0)                     AS outputTokens,
+			COALESCE(SUM(input_cache_read_tokens), 0)           AS cacheReadTokens,
+			COALESCE(SUM(input_cache_write_tokens), 0)          AS cacheWriteTokens,
+			COALESCE(SUM(total_tokens), 0)                      AS totalTokens,
+			COUNT(*)                                            AS requests
+		FROM llm_requests
+		${statusClause}
 		GROUP BY ${groupExpr}
 		ORDER BY date ASC
 	`).all(params) as Array<Record<string, number | string>>;

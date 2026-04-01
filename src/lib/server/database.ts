@@ -1,11 +1,11 @@
-// Database connection and query utilities for ~/.tenex/analysis.db
+// Database connection and query utilities for ~/.tenex/data/trace-analysis.db
 // Server-only module — never import from client-side Svelte components
 
 import Database from 'better-sqlite3';
 import { homedir } from 'os';
 import { join } from 'path';
 
-const DB_PATH = process.env.TENEX_DB_PATH ?? join(homedir(), '.tenex', 'analysis.db');
+const DB_PATH = process.env.TENEX_DB_PATH ?? join(homedir(), '.tenex', 'data', 'trace-analysis.db');
 
 let _db: Database.Database | null = null;
 
@@ -46,7 +46,7 @@ export function hasTelemetryTable(): boolean {
 	try {
 		const db = getDb();
 		const row = db
-			.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='llm_usage'")
+			.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='llm_requests'")
 			.get();
 		return row !== undefined;
 	} catch {
@@ -63,25 +63,26 @@ export interface DateRange {
 
 /**
  * Build a WHERE clause fragment and bound params for an optional date range.
- * Uses the `created_at` column (Unix timestamp seconds).
+ * Uses the `started_at_ms` column (Unix timestamp milliseconds).
+ * YYYY-MM-DD strings are converted to unix milliseconds.
  */
 export function buildDateFilter(
 	range: DateRange,
-	column = 'created_at'
+	column = 'started_at_ms'
 ): { clause: string; params: Record<string, number> } {
 	const conditions: string[] = [];
 	const params: Record<string, number> = {};
 
 	if (range.from) {
 		conditions.push(`${column} >= @from`);
-		params.from = Math.floor(new Date(range.from).getTime() / 1000);
+		params.from = new Date(range.from).getTime();
 	}
 	if (range.to) {
-		// Include the full day by going to 23:59:59
+		// Include the full day by going to 23:59:59.999
 		const toDate = new Date(range.to);
 		toDate.setHours(23, 59, 59, 999);
 		conditions.push(`${column} <= @to`);
-		params.to = Math.floor(toDate.getTime() / 1000);
+		params.to = toDate.getTime();
 	}
 
 	return {

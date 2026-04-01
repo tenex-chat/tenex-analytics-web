@@ -14,135 +14,112 @@
 </script>
 
 <svelte:head>
-	<title>TENEX Analytics Dashboard</title>
+	<title>TENEX Analytics</title>
 </svelte:head>
 
-<div class="dashboard">
-	<div class="page-header">
-		<h1 class="page-title">Analytics Dashboard</h1>
-		{#if summary?.dateRange?.from}
-			<p class="page-subtitle">
-				{summary.dateRange.from} → {summary.dateRange.to}
-			</p>
-		{/if}
+<!-- Metrics strip — no card wrapper -->
+<dl class="metrics">
+	<div class="metric">
+		<dt>Total Tokens</dt>
+		<dd>{loading ? '—' : formatNumber(summary?.totalTokens ?? 0)}</dd>
 	</div>
+	<div class="metric">
+		<dt>Cache Hit Rate</dt>
+		<dd class="accent-green">{loading ? '—' : formatPercent(summary?.cacheEfficiencyPercent ?? 0)}</dd>
+	</div>
+	<div class="metric">
+		<dt>Total Cost</dt>
+		<dd>{loading ? '—' : formatCost(summary?.totalCostUsd ?? 0)}</dd>
+	</div>
+	<div class="metric last">
+		<dt>Requests</dt>
+		<dd>{loading ? '—' : formatNumber(summary?.totalRequests ?? 0)}</dd>
+	</div>
+</dl>
 
-	<!-- Summary metrics -->
-	<section class="metrics-grid">
-		<Card title="Total Tokens" {loading} error={error ?? null}>
-			<div class="metric-value">{formatNumber(summary?.totalTokens ?? 0)}</div>
-			<div class="metric-sub">
-				<span class="metric-label">Input:</span> {formatNumber(summary?.totalInputTokens ?? 0)}
-				&nbsp;·&nbsp;
-				<span class="metric-label">Output:</span> {formatNumber(summary?.totalOutputTokens ?? 0)}
-			</div>
-		</Card>
+<!-- Section: Token Usage -->
+<section class="chart-section" style="margin-top: 48px;">
+	<h2 class="section-label">Token Usage</h2>
+	<Card title="Token Usage Over Time" {loading} error={error ?? null}>
+		<div class="chart-placeholder">token trend chart — phase 2</div>
+	</Card>
+</section>
 
-		<Card title="Cache Efficiency" {loading} error={error ?? null}>
-			<div class="metric-value accent">{formatPercent(summary?.cacheEfficiencyPercent ?? 0)}</div>
-			<div class="metric-sub">
-				<span class="metric-label">Read:</span> {formatNumber(summary?.totalCacheReadTokens ?? 0)}
-				&nbsp;·&nbsp;
-				<span class="metric-label">Write:</span> {formatNumber(summary?.totalCacheWriteTokens ?? 0)}
-			</div>
-		</Card>
-
-		<Card title="Total Cost" {loading} error={error ?? null}>
-			<div class="metric-value">{formatCost(summary?.totalCostUsd ?? 0)}</div>
-			<div class="metric-sub">
-				<span class="metric-label">Requests:</span> {formatNumber(summary?.totalRequests ?? 0)}
-			</div>
-		</Card>
-	</section>
-
-	<!-- Placeholder sections for future charts -->
-	<section class="charts-grid">
-		<Card title="Token Usage Over Time" {loading}>
-			<div class="chart-placeholder">
-				<p class="placeholder-text">Token trend chart — Phase 2</p>
-			</div>
-		</Card>
-
-		<Card title="Cache Performance by Model" {loading}>
-			<div class="chart-placeholder">
-				<p class="placeholder-text">Cache breakdown chart — Phase 2</p>
-			</div>
-		</Card>
-	</section>
-</div>
+<!-- Section: Cache by Model -->
+<section class="chart-section" style="margin-top: 40px;">
+	<h2 class="section-label">Cache by Model</h2>
+	<Card title="Cache Performance by Model" {loading} error={error ?? null}>
+		<div class="chart-placeholder">cache breakdown chart — phase 2</div>
+	</Card>
+</section>
 
 <style>
-	.dashboard {
+	/* Metrics strip */
+	.metrics {
 		display: flex;
-		flex-direction: column;
-		gap: 2rem;
-	}
-
-	.page-header {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-	}
-
-	.page-title {
-		font-size: 1.5rem;
-		font-weight: 700;
-		color: var(--color-text-primary);
 		margin: 0;
+		padding: 0;
+		list-style: none;
 	}
 
-	.page-subtitle {
-		font-size: 0.875rem;
-		color: var(--color-text-secondary, #94a3b8);
-		margin: 0;
+	.metric {
+		flex: 1;
+		padding: 0 32px;
+		border-right: 1px solid var(--border);
 	}
 
-	.metrics-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-		gap: 1rem;
+	.metric:first-child {
+		padding-left: 0;
 	}
 
-	.charts-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-		gap: 1rem;
+	.metric.last {
+		border-right: none;
 	}
 
-	:global(.metric-value) {
-		font-size: 2rem;
-		font-weight: 700;
-		color: var(--color-text-primary);
-		line-height: 1;
-		margin-bottom: 0.5rem;
-	}
-
-	:global(.metric-value.accent) {
-		color: var(--color-accent, #7c3aed);
-	}
-
-	.metric-sub {
-		font-size: 0.75rem;
-		color: var(--color-text-secondary, #94a3b8);
-	}
-
-	:global(.metric-label) {
+	.metric dt {
+		font-size: 12px;
 		font-weight: 500;
-		color: var(--color-text-secondary, #64748b);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--muted);
+		margin-bottom: 8px;
 	}
 
+	.metric dd {
+		font-size: 28px;
+		font-weight: 600;
+		color: var(--text);
+		line-height: 1;
+		margin: 0;
+	}
+
+	.metric dd.accent-green {
+		color: var(--green);
+	}
+
+	/* Section headers */
+	.section-label {
+		font-size: 12px;
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--dim);
+		margin: 0 0 16px 0;
+		padding-bottom: 8px;
+		border-bottom: 1px solid var(--border);
+	}
+
+	.chart-section {
+		margin-bottom: 40px;
+	}
+
+	/* Chart placeholder */
 	.chart-placeholder {
+		height: 200px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		height: 160px;
-		border: 2px dashed var(--color-border, #334155);
-		border-radius: 0.375rem;
-	}
-
-	.placeholder-text {
-		font-size: 0.875rem;
-		color: var(--color-text-secondary, #64748b);
-		margin: 0;
+		font-size: 12px;
+		color: var(--dim);
 	}
 </style>

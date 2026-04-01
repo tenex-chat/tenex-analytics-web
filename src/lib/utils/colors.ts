@@ -103,3 +103,20 @@ export function getCacheEfficiencyColor(percentage: number): string {
 	if (percentage >= 40) return CHART_COLORS.warning;
 	return CHART_COLORS.danger;
 }
+
+// Model-name to color mapping — indexed by any string model identifier
+export const MODEL_COLORS: Record<string, string> = {
+	'claude-3-5-sonnet': CHART_COLORS.primary,
+	'claude-3-5-haiku': CHART_COLORS.purple,
+	'claude-3-opus': CHART_COLORS.info,
+	'gpt-4o': CHART_COLORS.secondary,
+	'gpt-4o-mini': CHART_COLORS.teal,
+	'gpt-4-turbo': CHART_COLORS.warning,
+	'gpt-3.5-turbo': CHART_COLORS.orange,
+	'gemini-1.5-pro': CHART_COLORS.success,
+	'gemini-1.5-flash': CHART_COLORS.pink,
+	default: CHART_COLORS.danger
+};
+
+// Sequential color palette for multi-series charts
+export const CHART_PALETTE: string[] = [...SERIES_COLORS_DARK];

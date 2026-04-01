@@ -18,32 +18,36 @@ export const GET: RequestHandler = ({ url }) => {
 	const { clause, params } = buildDateFilter(range);
 	const db = getDb();
 
+	const statusClause = clause
+		? clause + " AND status = 'success'"
+		: "WHERE status = 'success'";
+
 	// Overall totals
 	const overall = db.prepare(`
 		SELECT
-			COALESCE(SUM(cache_read_tokens), 0)   AS totalCacheReadTokens,
-			COALESCE(SUM(cache_write_tokens), 0)  AS totalCacheWriteTokens,
-			COALESCE(SUM(input_tokens), 0)        AS totalInputTokens
-		FROM llm_usage
-		${clause}
+			COALESCE(SUM(input_cache_read_tokens), 0)   AS totalCacheReadTokens,
+			COALESCE(SUM(input_cache_write_tokens), 0)  AS totalCacheWriteTokens,
+			COALESCE(SUM(input_tokens), 0)              AS totalInputTokens
+		FROM llm_requests
+		${statusClause}
 	`).get(params) as Record<string, number>;
 
 	const cacheRead = Number(overall.totalCacheReadTokens);
 	const input = Number(overall.totalInputTokens);
-	const efficiencyPercent = cacheRead > 0
-		? Math.round((cacheRead / (cacheRead + input)) * 10000) / 100
+	const efficiencyPercent = input > 0
+		? Math.round((cacheRead / input) * 10000) / 100
 		: 0;
 
 	// By model
 	const byModelRows = db.prepare(`
 		SELECT
-			COALESCE(model, 'unknown')            AS label,
-			COALESCE(SUM(cache_read_tokens), 0)   AS cacheReadTokens,
-			COALESCE(SUM(cache_write_tokens), 0)  AS cacheWriteTokens,
-			COALESCE(SUM(input_tokens), 0)        AS inputTokens,
-			COUNT(*)                              AS requests
-		FROM llm_usage
-		${clause}
+			COALESCE(model, 'unknown')                  AS label,
+			COALESCE(SUM(input_cache_read_tokens), 0)   AS cacheReadTokens,
+			COALESCE(SUM(input_cache_write_tokens), 0)  AS cacheWriteTokens,
+			COALESCE(SUM(input_tokens), 0)              AS inputTokens,
+			COUNT(*)                                    AS requests
+		FROM llm_requests
+		${statusClause}
 		GROUP BY model
 		ORDER BY cacheReadTokens DESC
 	`).all(params) as Array<Record<string, number | string>>;
@@ -51,21 +55,21 @@ export const GET: RequestHandler = ({ url }) => {
 	// By day
 	const byDayRows = db.prepare(`
 		SELECT
-			date(created_at, 'unixepoch')         AS label,
-			COALESCE(SUM(cache_read_tokens), 0)   AS cacheReadTokens,
-			COALESCE(SUM(cache_write_tokens), 0)  AS cacheWriteTokens,
-			COALESCE(SUM(input_tokens), 0)        AS inputTokens,
-			COUNT(*)                              AS requests
-		FROM llm_usage
-		${clause}
-		GROUP BY date(created_at, 'unixepoch')
+			date(started_at_ms/1000, 'unixepoch')       AS label,
+			COALESCE(SUM(input_cache_read_tokens), 0)   AS cacheReadTokens,
+			COALESCE(SUM(input_cache_write_tokens), 0)  AS cacheWriteTokens,
+			COALESCE(SUM(input_tokens), 0)              AS inputTokens,
+			COUNT(*)                                    AS requests
+		FROM llm_requests
+		${statusClause}
+		GROUP BY date(started_at_ms/1000, 'unixepoch')
 		ORDER BY label ASC
 	`).all(params) as Array<Record<string, number | string>>;
 
 	function toPoint(r: Record<string, number | string>) {
 		const cr = Number(r.cacheReadTokens);
 		const inp = Number(r.inputTokens);
-		const eff = cr > 0 ? Math.round((cr / (cr + inp)) * 10000) / 100 : 0;
+		const eff = inp > 0 ? Math.round((cr / inp) * 10000) / 100 : 0;
 		return {
 			label: r.label as string,
 			cacheReadTokens: cr,

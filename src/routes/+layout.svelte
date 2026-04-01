@@ -1,23 +1,17 @@
 <script lang="ts">
 	import '../app.css';
 	import Header from '$lib/components/Header.svelte';
+	import FilterBar from '$lib/components/FilterBar.svelte';
 </script>
 
-<div class="app-shell">
-	<Header />
-	<main class="main-content">
-		<slot />
-	</main>
-</div>
+<Header />
+<FilterBar />
+<main>
+	<slot />
+</main>
 
 <style>
-	.app-shell {
-		min-height: 100vh;
-		background: var(--color-bg-primary, #030712);
-		color: var(--color-text-primary, #f1f5f9);
-	}
-
-	.main-content {
+	main {
 		max-width: 80rem;
 		margin: 0 auto;
 		padding: 2rem 1.5rem;

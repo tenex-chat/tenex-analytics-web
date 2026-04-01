@@ -132,3 +132,12 @@ export function formatCostPerToken(costPerToken: number): string {
 	const costPer1K = costPerToken * 1000;
 	return `${formatCost(costPer1K)} / 1K`;
 }
+
+/**
+ * Format a token delta with sign prefix
+ * e.g., 500 → "+500", -200 → "-200"
+ */
+export function formatTokenDelta(delta: number): string {
+	const formatted = formatTokens(Math.abs(delta));
+	return delta >= 0 ? `+${formatted}` : `-${formatted}`;
+}

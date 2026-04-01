@@ -24,34 +24,37 @@ export const GET: RequestHandler = ({ url }) => {
 	const { clause, params } = buildDateFilter(range);
 	const db = getDb();
 
+	// Prepend status filter to the clause
+	const statusClause = clause
+		? clause + " AND status = 'success'"
+		: "WHERE status = 'success'";
+
 	const row = db.prepare(`
 		SELECT
-			COALESCE(SUM(input_tokens), 0)        AS totalInputTokens,
-			COALESCE(SUM(output_tokens), 0)       AS totalOutputTokens,
-			COALESCE(SUM(cache_read_tokens), 0)   AS totalCacheReadTokens,
-			COALESCE(SUM(cache_write_tokens), 0)  AS totalCacheWriteTokens,
-			COALESCE(SUM(input_tokens + output_tokens + cache_read_tokens + cache_write_tokens), 0) AS totalTokens,
-			COALESCE(SUM(total_cost_usd), 0)      AS totalCostUsd,
-			COUNT(*)                              AS totalRequests,
-			MIN(date(created_at, 'unixepoch'))    AS dateFrom,
-			MAX(date(created_at, 'unixepoch'))    AS dateTo
-		FROM llm_usage
-		${clause}
+			COALESCE(SUM(input_tokens), 0)                AS totalInputTokens,
+			COALESCE(SUM(output_tokens), 0)               AS totalOutputTokens,
+			COALESCE(SUM(input_cache_read_tokens), 0)     AS totalCacheReadTokens,
+			COALESCE(SUM(input_cache_write_tokens), 0)    AS totalCacheWriteTokens,
+			COALESCE(SUM(total_tokens), 0)                AS totalTokens,
+			COALESCE(SUM(cost_usd), 0)                    AS totalCostUsd,
+			COUNT(*)                                      AS totalRequests,
+			MIN(date(started_at_ms/1000, 'unixepoch'))    AS dateFrom,
+			MAX(date(started_at_ms/1000, 'unixepoch'))    AS dateTo,
+			ROUND(
+				SUM(input_cache_read_tokens) * 100.0 / NULLIF(SUM(input_tokens), 0),
+				2
+			) AS cacheEfficiencyPercent
+		FROM llm_requests
+		${statusClause}
 	`).get(params) as Record<string, number | string>;
-
-	const cacheRead = Number(row.totalCacheReadTokens);
-	const input = Number(row.totalInputTokens);
-	const cacheEfficiencyPercent = cacheRead > 0
-		? Math.round((cacheRead / (cacheRead + input)) * 10000) / 100
-		: 0;
 
 	return json({
 		totalInputTokens: Number(row.totalInputTokens),
 		totalOutputTokens: Number(row.totalOutputTokens),
-		totalCacheReadTokens: cacheRead,
+		totalCacheReadTokens: Number(row.totalCacheReadTokens),
 		totalCacheWriteTokens: Number(row.totalCacheWriteTokens),
 		totalTokens: Number(row.totalTokens),
-		cacheEfficiencyPercent,
+		cacheEfficiencyPercent: Number(row.cacheEfficiencyPercent) || 0,
 		totalCostUsd: Number(row.totalCostUsd),
 		totalRequests: Number(row.totalRequests),
 		dateRange: {

@@ -19,31 +19,34 @@ export const GET: RequestHandler = ({ url }) => {
 	const { clause, params } = buildDateFilter(range);
 	const db = getDb();
 
+	const statusClause = clause
+		? clause + " AND status = 'success'"
+		: "WHERE status = 'success'";
+
 	// Summary
 	const summaryRow = db.prepare(`
 		SELECT
-			COALESCE(SUM(input_tokens), 0)        AS totalInputTokens,
-			COALESCE(SUM(output_tokens), 0)       AS totalOutputTokens,
-			COALESCE(SUM(cache_read_tokens), 0)   AS totalCacheReadTokens,
-			COALESCE(SUM(cache_write_tokens), 0)  AS totalCacheWriteTokens,
-			COALESCE(SUM(input_tokens + output_tokens + cache_read_tokens + cache_write_tokens), 0) AS totalTokens,
-			COALESCE(SUM(total_cost_usd), 0)      AS totalCostUsd,
-			COUNT(*)                              AS totalRequests,
-			MIN(date(created_at, 'unixepoch'))    AS dateFrom,
-			MAX(date(created_at, 'unixepoch'))    AS dateTo
-		FROM llm_usage
-		${clause}
+			COALESCE(SUM(input_tokens), 0)                AS totalInputTokens,
+			COALESCE(SUM(output_tokens), 0)               AS totalOutputTokens,
+			COALESCE(SUM(input_cache_read_tokens), 0)     AS totalCacheReadTokens,
+			COALESCE(SUM(input_cache_write_tokens), 0)    AS totalCacheWriteTokens,
+			COALESCE(SUM(total_tokens), 0)                AS totalTokens,
+			COALESCE(SUM(cost_usd), 0)                    AS totalCostUsd,
+			COUNT(*)                                      AS totalRequests,
+			MIN(date(started_at_ms/1000, 'unixepoch'))    AS dateFrom,
+			MAX(date(started_at_ms/1000, 'unixepoch'))    AS dateTo
+		FROM llm_requests
+		${statusClause}
 	`).get(params) as Record<string, number | string>;
 
-	const cacheEff = summaryRow.totalCacheReadTokens > 0
-		? (Number(summaryRow.totalCacheReadTokens) /
-			(Number(summaryRow.totalCacheReadTokens) + Number(summaryRow.totalInputTokens))) * 100
-		: 0;
+	const cacheRead = Number(summaryRow.totalCacheReadTokens);
+	const inputTokens = Number(summaryRow.totalInputTokens);
+	const cacheEff = inputTokens > 0 ? (cacheRead / inputTokens) * 100 : 0;
 
 	const summary = {
-		totalInputTokens: Number(summaryRow.totalInputTokens),
+		totalInputTokens: inputTokens,
 		totalOutputTokens: Number(summaryRow.totalOutputTokens),
-		totalCacheReadTokens: Number(summaryRow.totalCacheReadTokens),
+		totalCacheReadTokens: cacheRead,
 		totalCacheWriteTokens: Number(summaryRow.totalCacheWriteTokens),
 		totalTokens: Number(summaryRow.totalTokens),
 		cacheEfficiencyPercent: Math.round(cacheEff * 100) / 100,
@@ -58,16 +61,16 @@ export const GET: RequestHandler = ({ url }) => {
 	// Token trends (daily)
 	const trendRows = db.prepare(`
 		SELECT
-			date(created_at, 'unixepoch')         AS date,
-			COALESCE(SUM(input_tokens), 0)        AS inputTokens,
-			COALESCE(SUM(output_tokens), 0)       AS outputTokens,
-			COALESCE(SUM(cache_read_tokens), 0)   AS cacheReadTokens,
-			COALESCE(SUM(cache_write_tokens), 0)  AS cacheWriteTokens,
-			COALESCE(SUM(input_tokens + output_tokens + cache_read_tokens + cache_write_tokens), 0) AS totalTokens,
-			COUNT(*)                              AS requests
-		FROM llm_usage
-		${clause}
-		GROUP BY date(created_at, 'unixepoch')
+			date(started_at_ms/1000, 'unixepoch')         AS date,
+			COALESCE(SUM(input_tokens), 0)                AS inputTokens,
+			COALESCE(SUM(output_tokens), 0)               AS outputTokens,
+			COALESCE(SUM(input_cache_read_tokens), 0)     AS cacheReadTokens,
+			COALESCE(SUM(input_cache_write_tokens), 0)    AS cacheWriteTokens,
+			COALESCE(SUM(total_tokens), 0)                AS totalTokens,
+			COUNT(*)                                      AS requests
+		FROM llm_requests
+		${statusClause}
+		GROUP BY date(started_at_ms/1000, 'unixepoch')
 		ORDER BY date ASC
 	`).all(params) as Array<Record<string, number | string>>;
 
@@ -87,26 +90,26 @@ export const GET: RequestHandler = ({ url }) => {
 	// Cache metrics by model
 	const byModelRows = db.prepare(`
 		SELECT
-			COALESCE(model, 'unknown')            AS label,
-			COALESCE(SUM(cache_read_tokens), 0)   AS cacheReadTokens,
-			COALESCE(SUM(cache_write_tokens), 0)  AS cacheWriteTokens,
-			COALESCE(SUM(input_tokens), 0)        AS inputTokens,
-			COUNT(*)                              AS requests
-		FROM llm_usage
-		${clause}
+			COALESCE(model, 'unknown')                    AS label,
+			COALESCE(SUM(input_cache_read_tokens), 0)     AS cacheReadTokens,
+			COALESCE(SUM(input_cache_write_tokens), 0)    AS cacheWriteTokens,
+			COALESCE(SUM(input_tokens), 0)                AS inputTokens,
+			COUNT(*)                                      AS requests
+		FROM llm_requests
+		${statusClause}
 		GROUP BY model
 		ORDER BY cacheReadTokens DESC
 	`).all(params) as Array<Record<string, number | string>>;
 
 	const byModelPoints = byModelRows.map((r) => {
-		const cacheRead = Number(r.cacheReadTokens);
-		const input = Number(r.inputTokens);
-		const eff = cacheRead > 0 ? (cacheRead / (cacheRead + input)) * 100 : 0;
+		const cr = Number(r.cacheReadTokens);
+		const inp = Number(r.inputTokens);
+		const eff = inp > 0 ? (cr / inp) * 100 : 0;
 		return {
 			label: r.label as string,
-			cacheReadTokens: cacheRead,
+			cacheReadTokens: cr,
 			cacheWriteTokens: Number(r.cacheWriteTokens),
-			inputTokens: input,
+			inputTokens: inp,
 			efficiencyPercent: Math.round(eff * 100) / 100,
 			requests: Number(r.requests)
 		};
@@ -115,26 +118,26 @@ export const GET: RequestHandler = ({ url }) => {
 	// Cache metrics by day
 	const byDayRows = db.prepare(`
 		SELECT
-			date(created_at, 'unixepoch')         AS label,
-			COALESCE(SUM(cache_read_tokens), 0)   AS cacheReadTokens,
-			COALESCE(SUM(cache_write_tokens), 0)  AS cacheWriteTokens,
-			COALESCE(SUM(input_tokens), 0)        AS inputTokens,
-			COUNT(*)                              AS requests
-		FROM llm_usage
-		${clause}
-		GROUP BY date(created_at, 'unixepoch')
+			date(started_at_ms/1000, 'unixepoch')         AS label,
+			COALESCE(SUM(input_cache_read_tokens), 0)     AS cacheReadTokens,
+			COALESCE(SUM(input_cache_write_tokens), 0)    AS cacheWriteTokens,
+			COALESCE(SUM(input_tokens), 0)                AS inputTokens,
+			COUNT(*)                                      AS requests
+		FROM llm_requests
+		${statusClause}
+		GROUP BY date(started_at_ms/1000, 'unixepoch')
 		ORDER BY label ASC
 	`).all(params) as Array<Record<string, number | string>>;
 
 	const byDayPoints = byDayRows.map((r) => {
-		const cacheRead = Number(r.cacheReadTokens);
-		const input = Number(r.inputTokens);
-		const eff = cacheRead > 0 ? (cacheRead / (cacheRead + input)) * 100 : 0;
+		const cr = Number(r.cacheReadTokens);
+		const inp = Number(r.inputTokens);
+		const eff = inp > 0 ? (cr / inp) * 100 : 0;
 		return {
 			label: r.label as string,
-			cacheReadTokens: cacheRead,
+			cacheReadTokens: cr,
 			cacheWriteTokens: Number(r.cacheWriteTokens),
-			inputTokens: input,
+			inputTokens: inp,
 			efficiencyPercent: Math.round(eff * 100) / 100,
 			requests: Number(r.requests)
 		};
@@ -153,29 +156,23 @@ export const GET: RequestHandler = ({ url }) => {
 	// Cost data by day
 	const costByDayRows = db.prepare(`
 		SELECT
-			date(created_at, 'unixepoch')           AS date,
-			COALESCE(SUM(total_cost_usd), 0)        AS totalCostUsd,
-			COALESCE(SUM(input_cost_usd), 0)        AS inputCostUsd,
-			COALESCE(SUM(output_cost_usd), 0)       AS outputCostUsd,
-			COALESCE(SUM(cache_read_cost_usd + cache_write_cost_usd), 0) AS cacheCostUsd,
-			COUNT(*)                                AS requests
-		FROM llm_usage
-		${clause}
-		GROUP BY date(created_at, 'unixepoch')
+			date(started_at_ms/1000, 'unixepoch')         AS date,
+			COALESCE(SUM(cost_usd), 0)                    AS totalCostUsd,
+			COUNT(*)                                      AS requests
+		FROM llm_requests
+		${statusClause}
+		GROUP BY date(started_at_ms/1000, 'unixepoch')
 		ORDER BY date ASC
 	`).all(params) as Array<Record<string, number | string>>;
 
 	// Cost data by model
 	const costByModelRows = db.prepare(`
 		SELECT
-			COALESCE(model, 'unknown')              AS model,
-			COALESCE(SUM(total_cost_usd), 0)        AS totalCostUsd,
-			COALESCE(SUM(input_cost_usd), 0)        AS inputCostUsd,
-			COALESCE(SUM(output_cost_usd), 0)       AS outputCostUsd,
-			COALESCE(SUM(cache_read_cost_usd + cache_write_cost_usd), 0) AS cacheCostUsd,
-			COUNT(*)                                AS requests
-		FROM llm_usage
-		${clause}
+			COALESCE(model, 'unknown')                    AS model,
+			COALESCE(SUM(cost_usd), 0)                    AS totalCostUsd,
+			COUNT(*)                                      AS requests
+		FROM llm_requests
+		${statusClause}
 		GROUP BY model
 		ORDER BY totalCostUsd DESC
 	`).all(params) as Array<Record<string, number | string>>;
@@ -185,17 +182,11 @@ export const GET: RequestHandler = ({ url }) => {
 		byDay: costByDayRows.map((r) => ({
 			date: r.date as string,
 			totalCostUsd: Number(r.totalCostUsd),
-			inputCostUsd: Number(r.inputCostUsd),
-			outputCostUsd: Number(r.outputCostUsd),
-			cacheCostUsd: Number(r.cacheCostUsd),
 			requests: Number(r.requests)
 		})),
 		byModel: costByModelRows.map((r) => ({
 			model: r.model as string,
 			totalCostUsd: Number(r.totalCostUsd),
-			inputCostUsd: Number(r.inputCostUsd),
-			outputCostUsd: Number(r.outputCostUsd),
-			cacheCostUsd: Number(r.cacheCostUsd),
 			requests: Number(r.requests),
 			avgCostPerRequest: Number(r.requests) > 0 ? Number(r.totalCostUsd) / Number(r.requests) : 0
 		}))
