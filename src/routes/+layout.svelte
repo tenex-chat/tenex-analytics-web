@@ -14,6 +14,7 @@
       <a href="/costs" class:active={$page.url.pathname === '/costs'}>Costs</a>
       <a href="/context-windows" class:active={$page.url.pathname === '/context-windows'}>Context</a>
       <a href="/conversations" class:active={$page.url.pathname === '/conversations'}>Conversations</a>
+      <a href="/conversation-stats" class:active={$page.url.pathname === '/conversation-stats'}>Conv Stats</a>
     </nav>
   </div>
 </header>
