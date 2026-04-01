@@ -1,9 +1,16 @@
 // GET /api/cache — cache efficiency metrics by model and by day
-// Supports ?from=YYYY-MM-DD&to=YYYY-MM-DD
+// Supports ?from=YYYY-MM-DD&to=YYYY-MM-DD&model=...&agent=...&project=...&provider=...
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, buildDateFilter, parseDateRange, hasTelemetryTable } from '$lib/server/database.js';
+import {
+	getDb,
+	buildDateFilter,
+	parseDateRange,
+	hasTelemetryTable,
+	parseEntityFilters,
+	buildEntityFilter
+} from '$lib/server/database.js';
 
 export const GET: RequestHandler = ({ url }) => {
 	if (!hasTelemetryTable()) {
@@ -15,12 +22,17 @@ export const GET: RequestHandler = ({ url }) => {
 	}
 
 	const range = parseDateRange(url);
-	const { clause, params } = buildDateFilter(range);
+	const { clause, params: dateParams } = buildDateFilter(range);
+	const { conditions: entityConditions, params: entityParams } = buildEntityFilter(
+		parseEntityFilters(url)
+	);
+	const params = { ...dateParams, ...entityParams };
 	const db = getDb();
 
+	const allConditions = ["status = 'success'", ...entityConditions];
 	const statusClause = clause
-		? clause + " AND status = 'success'"
-		: "WHERE status = 'success'";
+		? clause + ' AND ' + allConditions.join(' AND ')
+		: 'WHERE ' + allConditions.join(' AND ');
 
 	// Overall totals
 	const overall = db.prepare(`

@@ -30,6 +30,26 @@
 	];
 
 	onMount(async () => {
+		const urlParams = new URLSearchParams(window.location.search);
+		const urlModel = urlParams.get('model');
+		const urlAgent = urlParams.get('agent');
+		const urlProject = urlParams.get('project');
+		const urlProvider = urlParams.get('provider');
+		const urlApiKey = urlParams.get('apiKey');
+		if (urlModel || urlAgent || urlProject || urlProvider || urlApiKey) {
+			filters.update((s) => ({
+				...s,
+				model: urlModel ?? s.model,
+				agent: urlAgent ?? s.agent,
+				project: urlProject ?? s.project,
+				provider: urlProvider ?? s.provider,
+				apiKey: urlApiKey ?? s.apiKey
+			}));
+			if (urlModel) modelVal = urlModel;
+			if (urlAgent) agentVal = urlAgent;
+			if (urlProject) projectVal = urlProject;
+		}
+
 		try {
 			const res = await fetch('/api/filters');
 			if (res.ok) options = await res.json();
