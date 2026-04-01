@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS custom properties for brand color palette */
+:root {
+	--color-bg-primary: theme('colors.gray.950');
+	--color-bg-secondary: theme('colors.gray.900');
+	--color-bg-tertiary: theme('colors.gray.800');
+	--color-border: theme('colors.gray.700');
+	--color-text-primary: theme('colors.gray.100');
+	--color-text-secondary: theme('colors.gray.400');
+	--color-text-muted: theme('colors.gray.600');
+	--color-accent: theme('colors.violet.500');
+	--color-accent-hover: theme('colors.violet.400');
+	--color-success: theme('colors.emerald.500');
+	--color-warning: theme('colors.amber.500');
+	--color-danger: theme('colors.red.500');
+	--color-info: theme('colors.sky.500');
+}
+
+.light {
+	--color-bg-primary: theme('colors.gray.50');
+	--color-bg-secondary: theme('colors.white');
+	--color-bg-tertiary: theme('colors.gray.100');
+	--color-border: theme('colors.gray.200');
+	--color-text-primary: theme('colors.gray.900');
+	--color-text-secondary: theme('colors.gray.600');
+	--color-text-muted: theme('colors.gray.400');
+	--color-accent: theme('colors.violet.600');
+	--color-accent-hover: theme('colors.violet.700');
+}
+
+@layer base {
+	* {
+		@apply border-gray-700;
+	}
+
+	html {
+		@apply antialiased;
+	}
+
+	body {
+		@apply bg-gray-950 text-gray-100 dark:bg-gray-950 dark:text-gray-100;
+		font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+	}
+
+	/* Scrollbar styling for dark mode */
+	::-webkit-scrollbar {
+		@apply w-2;
+	}
+
+	::-webkit-scrollbar-track {
+		@apply bg-gray-900;
+	}
+
+	::-webkit-scrollbar-thumb {
+		@apply bg-gray-700 rounded-full;
+	}
+
+	::-webkit-scrollbar-thumb:hover {
+		@apply bg-gray-600;
+	}
+}
+
+@layer components {
+	.card {
+		@apply bg-gray-900 border border-gray-800 rounded-xl p-4;
+	}
+
+	.metric-value {
+		@apply text-2xl font-bold text-gray-100;
+	}
+
+	.metric-label {
+		@apply text-sm text-gray-400;
+	}
+
+	.btn-primary {
+		@apply bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg transition-colors;
+	}
+
+	.btn-ghost {
+		@apply bg-transparent hover:bg-gray-800 text-gray-400 hover:text-gray-200 px-3 py-2 rounded-lg transition-colors;
+	}
+}
