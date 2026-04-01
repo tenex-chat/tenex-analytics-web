@@ -73,6 +73,8 @@ export const GET: RequestHandler = ({ params }) => {
 		const msgCountByRequest = new Map<string, number>();
 		const toolCallCountByRequest = new Map<string, number>();
 		const toolResultCountByRequest = new Map<string, number>();
+		// Per-role estimated token sums per request
+		const roleTokensByRequest = new Map<string, { system: number; user: number; assistant: number; tool: number }>();
 		if (hasMessages) {
 			const msgRows = (db.prepare(`
 				SELECT
@@ -90,6 +92,29 @@ export const GET: RequestHandler = ({ params }) => {
 				msgCountByRequest.set(row.request_id as string, Number(row.total));
 				toolCallCountByRequest.set(row.request_id as string, Number(row.toolUseCount));
 				toolResultCountByRequest.set(row.request_id as string, Number(row.toolResultCount));
+			}
+
+			const roleRows = (db.prepare(`
+				SELECT
+					request_id,
+					role,
+					SUM(COALESCE(estimated_tokens, 0)) AS tokens
+				FROM llm_request_messages
+				WHERE request_id IN (
+					SELECT request_id FROM llm_requests WHERE conversation_id = @conversationId
+				)
+				GROUP BY request_id, role
+			`).all({ conversationId }) as Array<Record<string, unknown>>);
+			for (const row of roleRows) {
+				const rid = row.request_id as string;
+				const role = (row.role as string).toLowerCase();
+				const tokens = Number(row.tokens);
+				const entry = roleTokensByRequest.get(rid) ?? { system: 0, user: 0, assistant: 0, tool: 0 };
+				if (role === 'system') entry.system += tokens;
+				else if (role === 'user') entry.user += tokens;
+				else if (role === 'assistant') entry.assistant += tokens;
+				else if (role === 'tool') entry.tool += tokens;
+				roleTokensByRequest.set(rid, entry);
 			}
 		}
 
@@ -128,7 +153,8 @@ export const GET: RequestHandler = ({ params }) => {
 			toolResultsCount: toolResultCountByRequest.get(r.id as string) ?? 0,
 			toolCallsStripped: strippedByRequest.get(r.id as string) ?? 0,
 			contextManagementEvent: cmeByRequest.get(r.id as string) ?? 0,
-			anthropicClearToolUses: Number(r.anthropicClearToolUses)
+			anthropicClearToolUses: Number(r.anthropicClearToolUses),
+			roleTokens: roleTokensByRequest.get(r.id as string) ?? { system: 0, user: 0, assistant: 0, tool: 0 }
 		}));
 
 		// Summary aggregates

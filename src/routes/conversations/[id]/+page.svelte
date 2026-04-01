@@ -87,6 +87,11 @@
 		outputTokens: p.outputTokens,
 		cacheReadTokens: p.cacheReadTokens,
 		cacheWriteTokens: p.cacheWriteTokens,
+		// per-role token breakdown (estimated tokens from llm_request_messages)
+		roleSystem: p.roleTokens?.system ?? 0,
+		roleUser: p.roleTokens?.user ?? 0,
+		roleAssistant: p.roleTokens?.assistant ?? 0,
+		roleTool: p.roleTokens?.tool ?? 0,
 		// messages
 		messageCount: p.messageCount,
 		// tool activity
@@ -116,6 +121,33 @@
 	// Show cache chart only when cache data exists
 	$: hasCacheData = (stats?.summary.totalCacheReadTokens ?? 0) > 0 ||
 		(stats?.summary.totalCacheWriteTokens ?? 0) > 0;
+
+	// Annotation markers for Chart 1 (Total Tokens per Request)
+	$: tokenChartAnnotations = (() => {
+		if (!chartData.length) return [];
+		const markers: Array<{ index: number; color: string; label: string }> = [];
+		for (let i = 0; i < chartData.length; i++) {
+			const p = chartData[i];
+			if (p.anthropicClearToolUses) {
+				markers.push({ index: i, color: '#ef4444', label: 'Anthropic stripped tools' });
+			}
+			if (p.contextManagementEvent) {
+				markers.push({ index: i, color: '#f97316', label: 'Context management fired' });
+			}
+			if (Number(p.toolCallsStripped) > 0) {
+				markers.push({ index: i, color: '#3b82f6', label: 'Tool exchanges removed' });
+			}
+			// Cache read spike: >20% increase over prior point
+			if (i > 0) {
+				const prev = Number(chartData[i - 1].cacheReadTokens) || 0;
+				const curr = Number(p.cacheReadTokens) || 0;
+				if (curr > 0 && (prev === 0 || curr > prev * 1.2)) {
+					markers.push({ index: i, color: '#22c55e', label: 'Cache read spike' });
+				}
+			}
+		}
+		return markers;
+	})();
 </script>
 
 <svelte:head><title>Conversation — TENEX Analytics</title></svelte:head>
@@ -198,16 +230,22 @@
 				</div>
 			</dl>
 
-			<!-- Chart 1: Token overview — always shown -->
+			<!-- Chart 1: Token composition by role — stacked area, always shown -->
 			<div class="chart-section">
-				<p class="chart-label">Total Tokens per Request (input + output)</p>
+				<p class="chart-label">Token Composition per Request</p>
+				<p class="chart-desc">Estimated tokens by message role — stacked total approximates context size sent to the model</p>
 				<LineChart
 					data={chartData}
 					lines={[
-						{ key: 'tokensUsed', label: 'Tokens Used', color: SERIES_COLORS[0] },
+						{ key: 'roleSystem', label: 'System', color: '#71717a' },
+						{ key: 'roleUser', label: 'User', color: SERIES_COLORS[0] },
+						{ key: 'roleAssistant', label: 'Assistant', color: SERIES_COLORS[1] },
+						{ key: 'roleTool', label: 'Tool', color: SERIES_COLORS[2] },
 					]}
 					xKey="label"
 					height={220}
+					stacked={true}
+					annotations={tokenChartAnnotations}
 				/>
 			</div>
 
