@@ -55,7 +55,7 @@
 	<Card title="Cache Hit % by Model" {loading} error={error}>
 		<BarChart
 			data={byModel}
-			bars={[{ key: 'efficiencyPercent', label: 'Efficiency %', color: CHART_COLORS.teal }]}
+			bars={[{ key: 'efficiencyPercent', label: 'Efficiency %', color: CHART_COLORS.primary }]}
 			xKey="label"
 			height={300}
 		/>
@@ -64,7 +64,7 @@
 	<Card title="Cache Read Tokens Over Time" {loading}>
 		<LineChart
 			data={byDay}
-			lines={[{ key: 'cacheReadTokens', label: 'Cache Read Tokens', color: CHART_COLORS.success }]}
+			lines={[{ key: 'cacheReadTokens', label: 'Cache Read Tokens', color: CHART_COLORS.green }]}
 			xKey="label"
 			height={260}
 		/>
@@ -73,8 +73,8 @@
 
 <style>
 	.page { display: flex; flex-direction: column; gap: 1.5rem; }
-	.page-title { font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary, #f1f5f9); }
+	.page-title { font-size: 1.5rem; font-weight: 700; color: var(--text); }
 	.metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
-	.metric-value { font-size: 2rem; font-weight: 700; color: var(--color-text-primary, #f1f5f9); }
-	.metric-sub { font-size: 0.8125rem; color: var(--color-text-secondary, #9ca3af); margin-top: 0.25rem; }
+	.metric-value { font-size: 2rem; font-weight: 700; color: var(--text); }
+	.metric-sub { font-size: 0.8125rem; color: var(--muted); margin-top: 0.25rem; }
 </style>

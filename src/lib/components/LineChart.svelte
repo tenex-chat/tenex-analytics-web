@@ -11,7 +11,7 @@
 		Legend,
 		Filler
 	} from 'chart.js';
-	import { SERIES_COLORS_DARK, hexToRgba } from '$lib/utils/colors.js';
+	import { SERIES_COLORS, hexToRgba, getChartTheme } from '$lib/utils/colors.js';
 
 	ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
@@ -21,10 +21,12 @@
 	export let height: number = 300;
 	export let title: string | undefined = undefined;
 
+	$: theme = getChartTheme();
+
 	$: chartData = {
 		labels: data.map((d) => d[xKey] as string),
 		datasets: lines.map((line, i) => {
-			const color = line.color ?? SERIES_COLORS_DARK[i % SERIES_COLORS_DARK.length];
+			const color = line.color ?? SERIES_COLORS[i % SERIES_COLORS.length];
 			return {
 				label: line.label,
 				data: data.map((d) => Number(d[line.key]) || 0),
@@ -50,32 +52,32 @@
 			legend: {
 				display: lines.length > 1,
 				labels: {
-					color: '#9ca3af',
+					color: theme.textColor,
 					font: { size: 12 }
 				}
 			},
 			title: {
 				display: !!title,
 				text: title ?? '',
-				color: '#f3f4f6',
+				color: theme.tooltipText,
 				font: { size: 14 }
 			},
 			tooltip: {
-				backgroundColor: '#1f2937',
-				borderColor: '#374151',
+				backgroundColor: theme.tooltipBackground,
+				borderColor: theme.tooltipBorder,
 				borderWidth: 1,
-				titleColor: '#f3f4f6',
-				bodyColor: '#9ca3af'
+				titleColor: theme.tooltipText,
+				bodyColor: theme.textColor
 			}
 		},
 		scales: {
 			x: {
-				ticks: { color: '#9ca3af', font: { size: 11 }, maxTicksLimit: 12 },
-				grid: { color: '#1f2937' }
+				ticks: { color: theme.textColor, font: { size: 11 }, maxTicksLimit: 12 },
+				grid: { color: theme.gridColor }
 			},
 			y: {
-				ticks: { color: '#9ca3af', font: { size: 11 } },
-				grid: { color: '#1f2937' }
+				ticks: { color: theme.textColor, font: { size: 11 } },
+				grid: { color: theme.gridColor }
 			}
 		}
 	};
@@ -96,13 +98,13 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: var(--color-bg-secondary, #111827);
-		border-radius: 0.5rem;
-		border: 1px dashed var(--color-border, #374151);
+		background: var(--surface);
+		border-radius: var(--radius);
+		border: 1px dashed var(--border);
 	}
 
 	.empty-text {
-		color: var(--color-text-secondary, #9ca3af);
+		color: var(--muted);
 		font-size: 0.875rem;
 	}
 </style>

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { formatNumber, formatCost, formatPercent, formatTokenDelta } from '$lib/utils/format.js';
-import { MODEL_COLORS, CHART_PALETTE } from '$lib/utils/colors.js';
+import { SERIES_COLORS } from '$lib/utils/colors.js';
 
 describe('formatNumber', () => {
 	it('formats small numbers as-is', () => {
@@ -63,18 +63,11 @@ describe('formatTokenDelta', () => {
 	});
 });
 
-describe('MODEL_COLORS', () => {
-	it('has colors for known models', () => {
-		expect(MODEL_COLORS['claude-3-5-sonnet']).toBeTruthy();
-		expect(MODEL_COLORS['gpt-4o']).toBeTruthy();
-	});
-});
-
-describe('CHART_PALETTE', () => {
+describe('SERIES_COLORS', () => {
 	it('is a non-empty array of hex color strings', () => {
-		expect(Array.isArray(CHART_PALETTE)).toBe(true);
-		expect(CHART_PALETTE.length).toBeGreaterThan(0);
-		for (const color of CHART_PALETTE) {
+		expect(Array.isArray(SERIES_COLORS)).toBe(true);
+		expect(SERIES_COLORS.length).toBeGreaterThan(0);
+		for (const color of SERIES_COLORS) {
 			expect(color).toMatch(/^#[0-9a-fA-F]{6}$/);
 		}
 	});

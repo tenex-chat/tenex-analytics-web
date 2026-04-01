@@ -106,16 +106,16 @@
 
 <style>
 	.page { display: flex; flex-direction: column; gap: 1.5rem; }
-	.page-title { font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary, #f1f5f9); }
+	.page-title { font-size: 1.5rem; font-weight: 700; color: var(--text); }
 	.table-wrap { overflow-x: auto; }
 	.data-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
-	.data-table th { text-align: left; padding: 0.5rem 0.75rem; color: var(--color-text-secondary, #9ca3af); border-bottom: 1px solid var(--color-border, #374151); font-weight: 500; }
-	.data-table td { padding: 0.5rem 0.75rem; color: var(--color-text-primary, #f1f5f9); border-bottom: 1px solid var(--color-border, #1f2937); }
+	.data-table th { text-align: left; padding: 0.5rem 0.75rem; color: var(--muted); border-bottom: 1px solid var(--border); font-weight: 500; }
+	.data-table td { padding: 0.5rem 0.75rem; color: var(--text); border-bottom: 1px solid var(--border); }
 	.data-table tr:last-child td { border-bottom: none; }
 	.num { text-align: right; }
-	.high { color: #ef4444; font-weight: 600; }
+	.high { color: var(--red); font-weight: 600; }
 	.mono { font-family: monospace; font-size: 0.75rem; }
-	.model { font-size: 0.75rem; color: var(--color-text-secondary, #9ca3af); }
-	.empty { color: var(--color-text-secondary, #9ca3af); font-size: 0.875rem; padding: 1rem 0; }
-	.error-banner { background: #7f1d1d; border: 1px solid #ef4444; color: #fca5a5; padding: 0.75rem 1rem; border-radius: 0.5rem; font-size: 0.875rem; }
+	.model { font-size: 0.75rem; color: var(--muted); }
+	.empty { color: var(--muted); font-size: 0.875rem; padding: 1rem 0; }
+	.error-banner { background: #7f1d1d; border: 1px solid var(--red); color: #fca5a5; padding: 0.75rem 1rem; border-radius: var(--radius); font-size: 0.875rem; }
 </style>

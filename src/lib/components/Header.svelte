@@ -22,20 +22,20 @@
 		display: flex;
 		align-items: center;
 		gap: 2rem;
-		border-bottom: 1px solid var(--color-border, #1f2937);
-		background: var(--color-bg-secondary, #111827);
+		border-bottom: 1px solid var(--border);
+		background: var(--surface);
 	}
 
 	.brand {
 		font-size: 0.9375rem;
 		font-weight: 600;
-		color: var(--color-text-primary, #f3f4f6);
+		color: var(--text);
 		text-decoration: none;
 		white-space: nowrap;
 	}
 
 	.brand:hover {
-		color: var(--color-accent, #7c3aed);
+		color: var(--muted);
 	}
 
 	.nav {
@@ -47,16 +47,16 @@
 
 	.nav-link {
 		font-size: 0.875rem;
-		color: var(--color-text-secondary, #9ca3af);
+		color: var(--muted);
 		text-decoration: none;
 		padding: 0.375rem 0.75rem;
-		border-radius: 0.375rem;
+		border-radius: var(--radius);
 		transition: color 0.15s, background 0.15s;
 	}
 
 	.nav-link:hover {
-		color: var(--color-text-primary, #f3f4f6);
-		background: var(--color-bg-primary, #030712);
+		color: var(--text);
+		background: var(--bg);
 	}
 
 	.header-actions {

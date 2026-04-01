@@ -61,7 +61,7 @@
 			lines={[
 				{ key: 'inputTokens', label: 'Input', color: CHART_COLORS.primary },
 				{ key: 'outputTokens', label: 'Output', color: CHART_COLORS.secondary },
-				{ key: 'cacheReadTokens', label: 'Cache Read', color: CHART_COLORS.success }
+				{ key: 'cacheReadTokens', label: 'Cache Read', color: CHART_COLORS.green }
 			]}
 			xKey="date"
 			height={320}
@@ -105,16 +105,16 @@
 <style>
 	.page { display: flex; flex-direction: column; gap: 1.5rem; }
 	.page-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
-	.page-title { font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary, #f1f5f9); }
+	.page-title { font-size: 1.5rem; font-weight: 700; color: var(--text); }
 	.granularity-toggle { display: flex; gap: 0.25rem; }
-	.toggle-btn { background: transparent; border: 1px solid var(--color-border, #374151); color: var(--color-text-secondary, #9ca3af); padding: 0.375rem 0.875rem; border-radius: 0.375rem; font-size: 0.8125rem; cursor: pointer; text-transform: capitalize; }
-	.toggle-btn.active { background: var(--color-accent, #7c3aed); border-color: var(--color-accent, #7c3aed); color: #fff; }
+	.toggle-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 0.375rem 0.875rem; border-radius: var(--radius); font-size: 0.8125rem; cursor: pointer; text-transform: capitalize; }
+	.toggle-btn.active { background: var(--surface); border-color: var(--border); color: var(--text); }
 	.table-wrap { overflow-x: auto; }
 	.data-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
-	.data-table th { text-align: left; padding: 0.5rem 0.75rem; color: var(--color-text-secondary, #9ca3af); border-bottom: 1px solid var(--color-border, #374151); font-weight: 500; }
-	.data-table td { padding: 0.5rem 0.75rem; color: var(--color-text-primary, #f1f5f9); border-bottom: 1px solid var(--color-border, #1f2937); }
+	.data-table th { text-align: left; padding: 0.5rem 0.75rem; color: var(--muted); border-bottom: 1px solid var(--border); font-weight: 500; }
+	.data-table td { padding: 0.5rem 0.75rem; color: var(--text); border-bottom: 1px solid var(--border); }
 	.data-table tr:last-child td { border-bottom: none; }
 	.num { text-align: right; }
 	.bold { font-weight: 600; }
-	.empty { color: var(--color-text-secondary, #9ca3af); font-size: 0.875rem; padding: 1rem 0; }
+	.empty { color: var(--muted); font-size: 0.875rem; padding: 1rem 0; }
 </style>

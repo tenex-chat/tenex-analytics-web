@@ -14,9 +14,9 @@
 <style>
 	.theme-toggle {
 		background: transparent;
-		border: 1px solid var(--color-border, #1f2937);
-		border-radius: 0.375rem;
-		color: var(--color-text-secondary, #9ca3af);
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		color: var(--muted);
 		cursor: pointer;
 		font-size: 1rem;
 		width: 2rem;
@@ -29,7 +29,7 @@
 	}
 
 	.theme-toggle:hover {
-		border-color: var(--color-accent, #7c3aed);
-		color: var(--color-text-primary, #f3f4f6);
+		border-color: var(--muted);
+		color: var(--text);
 	}
 </style>
