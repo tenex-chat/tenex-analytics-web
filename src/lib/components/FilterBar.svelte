@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { filters } from '$lib/stores/filters.js';
 	import { formatDate } from '$lib/utils/format.js';
 	import type { TimePreset } from '$lib/stores/filters.js';
@@ -9,9 +8,10 @@
 		agents: string[];
 		providers: string[];
 		models: string[];
+		apiKeyIdentities: string[];
 	}
 
-	let options: FilterOptions = { projects: [], agents: [], providers: [], models: [] };
+	let options: FilterOptions = { projects: [], agents: [], providers: [], models: [], apiKeyIdentities: [] };
 
 	// Local bound values for custom date pickers
 	let fromVal = formatDate($filters.from);
@@ -19,6 +19,7 @@
 	let projectVal = $filters.project ?? '';
 	let agentVal = $filters.agent ?? '';
 	let modelVal = $filters.model ?? '';
+	let apiKeyVal = $filters.apiKey ?? '';
 
 	const PRESETS: { label: string; value: TimePreset }[] = [
 		{ label: '15m', value: '15m' },
@@ -29,7 +30,7 @@
 		{ label: 'Custom', value: 'custom' }
 	];
 
-	onMount(async () => {
+	async function initFilters() {
 		const urlParams = new URLSearchParams(window.location.search);
 		const urlModel = urlParams.get('model');
 		const urlAgent = urlParams.get('agent');
@@ -48,6 +49,7 @@
 			if (urlModel) modelVal = urlModel;
 			if (urlAgent) agentVal = urlAgent;
 			if (urlProject) projectVal = urlProject;
+			if (urlApiKey) apiKeyVal = urlApiKey;
 		}
 
 		try {
@@ -56,6 +58,10 @@
 		} catch {
 			// ignore — empty options is fine
 		}
+	}
+
+	$effect(() => {
+		initFilters();
 	});
 
 	function applyPreset(preset: TimePreset) {
@@ -96,6 +102,12 @@
 		filters.update((s) => ({ ...s, model: val || null }));
 	}
 
+	function applyApiKey(e: Event) {
+		const val = (e.currentTarget as HTMLSelectElement).value;
+		apiKeyVal = val;
+		filters.update((s) => ({ ...s, apiKey: val || null }));
+	}
+
 	function reset() {
 		filters.reset();
 		fromVal = formatDate($filters.from);
@@ -103,10 +115,11 @@
 		projectVal = '';
 		agentVal = '';
 		modelVal = '';
+		apiKeyVal = '';
 	}
 
-	$: activePreset = $filters.preset;
-	$: hasFilters = projectVal || agentVal || modelVal;
+	const activePreset = $derived($filters.preset);
+	const hasFilters = $derived(projectVal || agentVal || modelVal || apiKeyVal);
 </script>
 
 <div class="filter-bar">
@@ -118,7 +131,7 @@
 					<button
 						class="preset-btn"
 						class:active={activePreset === p.value}
-						on:click={() => applyPreset(p.value)}
+						onclick={() => applyPreset(p.value)}
 					>
 						{p.label}
 					</button>
@@ -133,7 +146,7 @@
 					type="date"
 					class="filter-input"
 					value={fromVal}
-					on:change={applyFrom}
+					onchange={applyFrom}
 				/>
 			</div>
 
@@ -143,7 +156,7 @@
 					type="date"
 					class="filter-input"
 					value={toVal}
-					on:change={applyTo}
+					onchange={applyTo}
 				/>
 			</div>
 		{/if}
@@ -151,7 +164,7 @@
 		{#if options.projects.length > 0}
 			<div class="filter-group">
 				<label class="filter-label">Project</label>
-				<select class="filter-select" value={projectVal} on:change={applyProject}>
+				<select class="filter-select" value={projectVal} onchange={applyProject}>
 					<option value="">All</option>
 					{#each options.projects as p}
 						<option value={p}>{p}</option>
@@ -163,7 +176,7 @@
 		{#if options.agents.length > 0}
 			<div class="filter-group">
 				<label class="filter-label">Agent</label>
-				<select class="filter-select" value={agentVal} on:change={applyAgent}>
+				<select class="filter-select" value={agentVal} onchange={applyAgent}>
 					<option value="">All</option>
 					{#each options.agents as a}
 						<option value={a}>{a}</option>
@@ -175,7 +188,7 @@
 		{#if options.models.length > 0}
 			<div class="filter-group">
 				<label class="filter-label">Model</label>
-				<select class="filter-select" value={modelVal} on:change={applyModel}>
+				<select class="filter-select" value={modelVal} onchange={applyModel}>
 					<option value="">All</option>
 					{#each options.models as m}
 						<option value={m}>{m}</option>
@@ -184,8 +197,20 @@
 			</div>
 		{/if}
 
+		{#if options.apiKeyIdentities.length > 0}
+			<div class="filter-group">
+				<label class="filter-label">API Key</label>
+				<select class="filter-select" value={apiKeyVal} onchange={applyApiKey}>
+					<option value="">All</option>
+					{#each options.apiKeyIdentities as k}
+						<option value={k}>{k}</option>
+					{/each}
+				</select>
+			</div>
+		{/if}
+
 		{#if hasFilters}
-			<button class="clear-btn" on:click={reset}>Reset</button>
+			<button class="clear-btn" onclick={reset}>Reset</button>
 		{/if}
 	</div>
 </div>

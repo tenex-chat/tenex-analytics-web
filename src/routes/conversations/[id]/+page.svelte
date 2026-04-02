@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import Card from '$lib/components/Card.svelte';
 	import LineChart from '$lib/components/LineChart.svelte';
@@ -8,7 +7,7 @@
 	import { SERIES_COLORS } from '$lib/utils/colors.js';
 	import type { ConversationStats } from '$lib/api/types.js';
 
-	interface Message { role: string; classification: string; tokenCount: number; contentPreview: string; }
+	interface Message { role: string; classification: string; tokenCount: number; contentPreview: string; systemReminderCount: number; }
 	interface LLMRequest { id: string; timestamp: string; model: string; inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number; totalCostUsd: number; messages: Message[]; }
 
 	let conversationId = '';
@@ -21,9 +20,9 @@
 	let statsLoading = true;
 	let statsError: string | null = null;
 
-	$: id = $page.params.id ?? '';
+	const id = $derived($page.params.id ?? '');
 
-	onMount(async () => {
+	async function loadConversation() {
 		conversationId = id;
 		const encodedId = encodeURIComponent(id);
 
@@ -59,15 +58,23 @@
 			statsError = statsRes.reason?.message ?? 'Failed to load stats';
 		}
 		statsLoading = false;
+	}
+
+	$effect(() => {
+		loadConversation();
 	});
 
-	$: totalTokens = requests.reduce((s, r) => s + r.inputTokens + r.outputTokens + r.cacheReadTokens + r.cacheWriteTokens, 0);
-	$: totalCost = requests.reduce((s, r) => s + r.totalCostUsd, 0);
+	const totalTokens = $derived(requests.reduce((s, r) => s + r.inputTokens + r.outputTokens + r.cacheReadTokens + r.cacheWriteTokens, 0));
+	const totalCost = $derived(requests.reduce((s, r) => s + r.totalCostUsd, 0));
 
 	function toggleExpand(id: string) {
 		if (expanded.has(id)) expanded.delete(id);
 		else expanded.add(id);
 		expanded = new Set(expanded);
+	}
+
+	function requestReminderCount(req: LLMRequest): number {
+		return req.messages.reduce((s, m) => s + (m.systemReminderCount ?? 0), 0);
 	}
 
 	function formatDuration(seconds: number): string {
@@ -424,11 +431,17 @@
 								<span class="req-time">{req.timestamp?.slice(0, 19) ?? '—'}</span>
 								<span class="req-model">{req.model}</span>
 							</div>
+							{#if req.messages.length > 0}
+								<span class="role-badge role-{req.messages[req.messages.length - 1].role}">{req.messages[req.messages.length - 1].role}</span>
+							{/if}
 							<div class="req-tokens">
 								<span class="token-pill in">↑ {formatNumber(req.inputTokens)}</span>
 								<span class="token-pill out">↓ {formatNumber(req.outputTokens)}</span>
 								{#if req.cacheReadTokens > 0}
 									<span class="token-pill cache">⚡ {formatNumber(req.cacheReadTokens)}</span>
+								{/if}
+								{#if requestReminderCount(req) > 0}
+									<span class="token-pill sys-reminder">{requestReminderCount(req)} reminder{requestReminderCount(req) > 1 ? 's' : ''}</span>
 								{/if}
 								<span class="req-cost">{formatCost(req.totalCostUsd)}</span>
 							</div>
@@ -455,7 +468,12 @@
 													<td><span class="role-badge role-{msg.role}">{msg.role}</span></td>
 													<td class="dim">{msg.classification || '—'}</td>
 													<td class="num">{msg.tokenCount}</td>
-													<td class="preview">{msg.contentPreview}</td>
+													<td class="preview">
+													{msg.contentPreview}
+													{#if msg.systemReminderCount > 0}
+														<span class="sys-reminder-badge">{msg.systemReminderCount} system reminder{msg.systemReminderCount > 1 ? 's' : ''}</span>
+													{/if}
+												</td>
 												</tr>
 											{/each}
 										</tbody>
@@ -526,7 +544,9 @@
 	.msg-table tr:last-child td { border-bottom: none; }
 	.num { text-align: right; }
 	.dim { color: var(--muted); }
-	.preview { font-size: 0.75rem; color: var(--muted); max-width: 30rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.preview { font-size: 0.75rem; color: var(--muted); max-width: 30rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; position: relative; }
+	.sys-reminder-badge { display: inline-block; margin-left: 0.5rem; padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.625rem; font-weight: 600; background: color-mix(in srgb, var(--yellow, #eab308) 15%, transparent); border: 1px solid var(--yellow, #eab308); color: var(--yellow, #eab308); white-space: nowrap; vertical-align: middle; }
+	.token-pill.sys-reminder { background: color-mix(in srgb, var(--yellow, #eab308) 15%, transparent); border: 1px solid var(--yellow, #eab308); color: var(--yellow, #eab308); }
 	.role-badge { display: inline-block; padding: 0.125rem 0.5rem; border-radius: 4px; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; }
 	.role-user { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
 	.role-assistant { background: var(--surface); border: 1px solid var(--border); color: var(--muted); }

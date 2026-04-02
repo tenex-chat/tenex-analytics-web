@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import Card from '$lib/components/Card.svelte';
 	import LineChart from '$lib/components/LineChart.svelte';
@@ -46,22 +45,28 @@
 	}
 
 	let mounted = false;
-	onMount(() => {
+	$effect(() => {
 		mounted = true;
 		loadList();
 		fetchStats();
 	});
 
-	$: if (mounted) $filterParams, loadList(), fetchStats();
+	$effect(() => {
+		if (mounted) {
+			$filterParams;
+			loadList();
+			fetchStats();
+		}
+	});
 
-	$: sorted = [...conversations].sort((a, b) => {
+	const sorted = $derived([...conversations].sort((a, b) => {
 		const av = a[sortCol];
 		const bv = b[sortCol];
 		const cmp = typeof av === 'number' && typeof bv === 'number'
 			? av - bv
 			: String(av).localeCompare(String(bv));
 		return sortDir === 'asc' ? cmp : -cmp;
-	});
+	}));
 
 	function setSort(col: SortCol) {
 		if (sortCol === col) {
@@ -160,13 +165,13 @@
 		return `${m}m ${s}s`;
 	}
 
-	$: positionData = avgTokensPerRequestByPosition.map((p) => ({
+	const positionData = $derived(avgTokensPerRequestByPosition.map((p) => ({
 		pos: `#${p.position}`,
 		avgTokens: p.avgTokens
-	}));
+	})));
 
-	$: toolStrippingData = toolStripping.map((t) => ({ label: t.label, count: t.count }));
-	$: contextPressureData = contextPressure.map((c) => ({ label: c.label, count: c.count }));
+	const toolStrippingData = $derived(toolStripping.map((t) => ({ label: t.label, count: t.count })));
+	const contextPressureData = $derived(contextPressure.map((c) => ({ label: c.label, count: c.count })));
 </script>
 
 <svelte:head><title>Conversations — TENEX Analytics</title></svelte:head>
@@ -358,35 +363,35 @@
 				<table class="data-table">
 					<thead>
 						<tr>
-							<th on:click={() => setSort('conversationId')} class:active={sortCol === 'conversationId'}>
+							<th onclick={() => setSort('conversationId')} class:active={sortCol === 'conversationId'}>
 								Conversation ID{#if sortCol === 'conversationId'}<span class="arrow">{sortDir === 'asc' ? ' ↑' : ' ↓'}</span>{/if}
 							</th>
-							<th on:click={() => setSort('agentSlug')} class:active={sortCol === 'agentSlug'}>
+							<th onclick={() => setSort('agentSlug')} class:active={sortCol === 'agentSlug'}>
 								Agent{#if sortCol === 'agentSlug'}<span class="arrow">{sortDir === 'asc' ? ' ↑' : ' ↓'}</span>{/if}
 							</th>
-							<th on:click={() => setSort('projectId')} class:active={sortCol === 'projectId'}>
+							<th onclick={() => setSort('projectId')} class:active={sortCol === 'projectId'}>
 								Project{#if sortCol === 'projectId'}<span class="arrow">{sortDir === 'asc' ? ' ↑' : ' ↓'}</span>{/if}
 							</th>
-							<th class="num" on:click={() => setSort('totalTokens')} class:active={sortCol === 'totalTokens'}>
+							<th class="num" onclick={() => setSort('totalTokens')} class:active={sortCol === 'totalTokens'}>
 								Tokens{#if sortCol === 'totalTokens'}<span class="arrow">{sortDir === 'asc' ? ' ↑' : ' ↓'}</span>{/if}
 							</th>
-							<th class="num" on:click={() => setSort('totalCost')} class:active={sortCol === 'totalCost'}>
+							<th class="num" onclick={() => setSort('totalCost')} class:active={sortCol === 'totalCost'}>
 								Cost{#if sortCol === 'totalCost'}<span class="arrow">{sortDir === 'asc' ? ' ↑' : ' ↓'}</span>{/if}
 							</th>
-							<th class="num" on:click={() => setSort('requestCount')} class:active={sortCol === 'requestCount'}>
+							<th class="num" onclick={() => setSort('requestCount')} class:active={sortCol === 'requestCount'}>
 								Requests{#if sortCol === 'requestCount'}<span class="arrow">{sortDir === 'asc' ? ' ↑' : ' ↓'}</span>{/if}
 							</th>
-							<th class="num" on:click={() => setSort('cacheEfficiency')} class:active={sortCol === 'cacheEfficiency'}>
+							<th class="num" onclick={() => setSort('cacheEfficiency')} class:active={sortCol === 'cacheEfficiency'}>
 								Cache %{#if sortCol === 'cacheEfficiency'}<span class="arrow">{sortDir === 'asc' ? ' ↑' : ' ↓'}</span>{/if}
 							</th>
-							<th on:click={() => setSort('lastTimestamp')} class:active={sortCol === 'lastTimestamp'}>
+							<th onclick={() => setSort('lastTimestamp')} class:active={sortCol === 'lastTimestamp'}>
 								Last Seen{#if sortCol === 'lastTimestamp'}<span class="arrow">{sortDir === 'asc' ? ' ↑' : ' ↓'}</span>{/if}
 							</th>
 						</tr>
 					</thead>
 					<tbody>
 						{#each sorted as c}
-							<tr class="clickable" on:click={() => goto(`/conversations/${encodeURIComponent(c.conversationId)}`)}>
+							<tr class="clickable" onclick={() => goto(`/conversations/${encodeURIComponent(c.conversationId)}`)}>
 								<td class="mono">{c.conversationId.slice(0, 4)}</td>
 								<td>{c.agentSlug}</td>
 								<td class="dim">{truncate(c.projectId, 20)}</td>
