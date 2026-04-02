@@ -282,30 +282,35 @@
 		</Card>
 	</div>
 
-	<!-- Row 4: tool stripping + length vs tokens -->
-	<div class="chart-grid">
-		<Card title="Tool Stripping Prevalence" loading={statsLoading} error={statsError}>
-			<BarChart
-				data={toolStrippingData}
-				bars={[{ key: 'count', label: 'Conversations', color: SERIES_COLORS[4] }]}
-				xKey="label"
-				height={260}
-				horizontal={true}
-			/>
-		</Card>
-		<Card title="Conversation Length vs Token Usage" loading={statsLoading} error={statsError}>
-			{#if lengthDistribution.length === 0}
-				<p class="empty">No data available</p>
-			{:else}
-				<BarChart
-					data={lengthDistribution}
-					bars={[{ key: 'count', label: 'Conversations', color: SERIES_COLORS[1] }]}
-					xKey="bucket"
-					height={260}
-				/>
-			{/if}
-		</Card>
-	</div>
+	<!-- Row 4: token breakdown by position + context savings -->
+	<Card title="Token Composition by Request Position" loading={statsLoading} error={statsError}>
+		<BarChart
+			data={tokenBreakdownByPosition}
+			bars={[
+				{ key: 'system',     label: 'System',       color: SERIES_COLORS[0] },
+				{ key: 'assistant',  label: 'Assistant',    color: SERIES_COLORS[2] },
+				{ key: 'toolCall',   label: 'Tool Defs',    color: SERIES_COLORS[3] },
+				{ key: 'toolResult', label: 'Tool Outputs', color: SERIES_COLORS[4] },
+				{ key: 'user',       label: 'User',         color: SERIES_COLORS[1] }
+			]}
+			xKey="pos"
+			height={300}
+			stacked={true}
+		/>
+	</Card>
+
+	<Card title="Context Editing Savings by Request Position" loading={statsLoading} error={statsError}>
+		<BarChart
+			data={contextSavingsByPosition}
+			bars={[
+				{ key: 'actualTokens', label: 'Tokens Sent',  color: SERIES_COLORS[0] },
+				{ key: 'savedTokens',  label: 'Tokens Saved', color: SERIES_COLORS[1] }
+			]}
+			xKey="pos"
+			height={300}
+			stacked={true}
+		/>
+	</Card>
 
 	<!-- Top expensive conversations table -->
 	<Card title="Top 10 Highest Token Conversations" loading={statsLoading} error={statsError}>
