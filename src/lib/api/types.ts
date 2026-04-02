@@ -113,6 +113,7 @@ export interface ConversationStatPoint {
 	toolCallsCount: number; // classification = 'tool_use' messages
 	toolResultsCount: number; // classification = 'tool_result' messages
 	toolCallsStripped: number; // removed_tool_exchanges_delta from context_management_events
+	tokensRemovedByContextEditing: number; // estimated_tokens_before - estimated_tokens_after from context_management_events
 	contextManagementEvent: number; // 1 if a context_management_event fired, else 0
 	anthropicClearToolUses: number; // 1 if anthropic_clear_tool_uses_enabled was set
 	roleTokens: {

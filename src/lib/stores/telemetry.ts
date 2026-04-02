@@ -2,6 +2,9 @@
 import { writable, derived } from 'svelte/store';
 import type { TelemetrySummary, TokenUsageTrend, CacheMetrics, DateRangeParams } from '$lib/api/types.js';
 import { getTelemetrySummary, getTokenTrends, getCacheMetrics } from '$lib/api/client.js';
+import type { SummaryParams } from '$lib/api/client.js';
+
+export type FetchAllParams = SummaryParams;
 
 export interface TelemetryState {
 	summary: TelemetrySummary | null;
@@ -24,13 +27,13 @@ const initialState: TelemetryState = {
 function createTelemetryStore() {
 	const { subscribe, set, update } = writable<TelemetryState>(initialState);
 
-	async function fetchAll(range?: DateRangeParams) {
+	async function fetchAll(params?: FetchAllParams) {
 		update((s) => ({ ...s, loading: true, error: null }));
 		try {
 			const [summary, tokenTrends, cacheMetrics] = await Promise.all([
-				getTelemetrySummary(range),
-				getTokenTrends(range),
-				getCacheMetrics(range)
+				getTelemetrySummary(params),
+				getTokenTrends(params),
+				getCacheMetrics(params)
 			]);
 			update((s) => ({
 				...s,

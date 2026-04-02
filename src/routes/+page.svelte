@@ -7,9 +7,12 @@
 	import { formatNumber, formatCost, formatPercent } from '$lib/utils/format.js';
 
 	async function loadSummary() {
-		const from = $filters.from.toISOString().split('T')[0];
-		const to = $filters.to.toISOString().split('T')[0];
-		await telemetry.fetchAll({ from, to });
+		const params: Record<string, string> = {};
+		// Parse all current filter params from the derived store string
+		new URLSearchParams($filterParams).forEach((value, key) => {
+			params[key] = value;
+		});
+		await telemetry.fetchAll(params);
 	}
 
 	$: $filterParams, loadSummary();

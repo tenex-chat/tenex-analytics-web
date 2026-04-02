@@ -98,6 +98,7 @@
 		toolCallsCount: p.toolCallsCount,
 		toolResultsCount: p.toolResultsCount,
 		toolCallsStripped: p.toolCallsStripped,
+		tokensRemovedByContextEditing: p.tokensRemovedByContextEditing,
 		// context pressure signals (0/1 bars for event markers)
 		contextManagementEvent: p.contextManagementEvent,
 		anthropicClearToolUses: p.anthropicClearToolUses
@@ -238,9 +239,10 @@
 					data={chartData}
 					lines={[
 						{ key: 'roleSystem', label: 'System', color: '#71717a' },
-						{ key: 'roleUser', label: 'User', color: SERIES_COLORS[0] },
+						{ key: 'roleUser', label: 'User', color: '#3b82f6' },
 						{ key: 'roleAssistant', label: 'Assistant', color: SERIES_COLORS[1] },
 						{ key: 'roleTool', label: 'Tool', color: SERIES_COLORS[2] },
+						{ key: 'tokensRemovedByContextEditing', label: 'Removed by ctx edit', color: SERIES_COLORS[4] },
 					]}
 					xKey="label"
 					height={220}

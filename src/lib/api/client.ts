@@ -85,12 +85,26 @@ function dateParams(range?: DateRangeParams): Record<string, string> {
 
 // ─── Public API Client Methods ───────────────────────────────────────────────
 
+export interface SummaryParams extends DateRangeParams {
+	project?: string;
+	agent?: string;
+	provider?: string;
+	model?: string;
+	apiKey?: string;
+}
+
 /**
  * GET /api/telemetry/summary
  * Returns aggregated summary metrics: total tokens, cache %, total cost
  */
-export async function getTelemetrySummary(range?: DateRangeParams): Promise<TelemetrySummary> {
-	return apiFetch<TelemetrySummary>('/api/telemetry/summary', dateParams(range));
+export async function getTelemetrySummary(params?: SummaryParams): Promise<TelemetrySummary> {
+	const queryParams: Record<string, string> = {};
+	if (params) {
+		Object.entries(params).forEach(([key, value]) => {
+			if (value !== undefined && value !== '') queryParams[key] = value as string;
+		});
+	}
+	return apiFetch<TelemetrySummary>('/api/telemetry/summary', queryParams);
 }
 
 /**

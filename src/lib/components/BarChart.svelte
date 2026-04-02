@@ -19,6 +19,7 @@
 	export let height: number = 300;
 	export let title: string | undefined = undefined;
 	export let horizontal: boolean = false;
+	export let stacked: boolean = false;
 
 	$: theme = getChartTheme();
 
@@ -32,7 +33,8 @@
 				backgroundColor: hexToRgba(color, 0.8),
 				borderColor: color,
 				borderWidth: 1,
-				borderRadius: 3
+				borderRadius: stacked ? 0 : 3,
+				stack: stacked ? 'stack' : undefined
 			};
 		})
 	};
@@ -69,10 +71,12 @@
 		},
 		scales: {
 			x: {
+				stacked: stacked,
 				ticks: { color: theme.textColor, font: { size: 11 }, maxRotation: 45 },
 				grid: { color: theme.gridColor }
 			},
 			y: {
+				stacked: stacked,
 				ticks: { color: theme.textColor, font: { size: 11 } },
 				grid: { color: theme.gridColor }
 			}

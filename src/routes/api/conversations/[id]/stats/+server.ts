@@ -122,12 +122,14 @@ export const GET: RequestHandler = ({ params }) => {
 		// Note: removed_messages_delta is not in the schema — using removed_tool_exchanges_delta as proxy
 		const strippedByRequest = new Map<string, number>();
 		const cmeByRequest = new Map<string, number>(); // 1 if event fired
+		const tokensRemovedByRequest = new Map<string, number>();
 		if (hasCme) {
 			const cmeRows = (db.prepare(`
 				SELECT
 					request_id,
 					COUNT(*) AS eventCount,
-					SUM(COALESCE(removed_tool_exchanges_delta, 0)) AS stripped
+					SUM(COALESCE(removed_tool_exchanges_delta, 0)) AS stripped,
+					SUM(COALESCE(estimated_tokens_before, 0) - COALESCE(estimated_tokens_after, 0)) AS tokensRemoved
 				FROM context_management_events
 				WHERE request_id IN (
 					SELECT request_id FROM llm_requests WHERE conversation_id = @conversationId
@@ -137,6 +139,7 @@ export const GET: RequestHandler = ({ params }) => {
 			for (const row of cmeRows) {
 				strippedByRequest.set(row.request_id as string, Number(row.stripped));
 				cmeByRequest.set(row.request_id as string, Number(row.eventCount) > 0 ? 1 : 0);
+				tokensRemovedByRequest.set(row.request_id as string, Math.max(0, Number(row.tokensRemoved)));
 			}
 		}
 
@@ -152,6 +155,7 @@ export const GET: RequestHandler = ({ params }) => {
 			toolCallsCount: toolCallCountByRequest.get(r.id as string) ?? 0,
 			toolResultsCount: toolResultCountByRequest.get(r.id as string) ?? 0,
 			toolCallsStripped: strippedByRequest.get(r.id as string) ?? 0,
+			tokensRemovedByContextEditing: tokensRemovedByRequest.get(r.id as string) ?? 0,
 			contextManagementEvent: cmeByRequest.get(r.id as string) ?? 0,
 			anthropicClearToolUses: Number(r.anthropicClearToolUses),
 			roleTokens: roleTokensByRequest.get(r.id as string) ?? { system: 0, user: 0, assistant: 0, tool: 0 }

@@ -92,6 +92,8 @@
 	type WeeklyItem = { week: string; avgRequests: number };
 	type GrowthItem = { date: string; avgFirstTokens: number; avgLastTokens: number };
 	type PositionItem = { position: number; avgTokens: number };
+	type BreakdownItem = { pos: string; system: number; user: number; assistant: number; toolCall: number; toolResult: number };
+	type SavingsItem = { pos: string; actualTokens: number; savedTokens: number };
 	type ExpensiveItem = {
 		conversationId: string;
 		agentSlug: string;
@@ -118,6 +120,8 @@
 	let contextPressure: LabelItem[] = [];
 	let topExpensive: ExpensiveItem[] = [];
 	let avgTokensPerRequestByPosition: PositionItem[] = [];
+	let tokenBreakdownByPosition: BreakdownItem[] = [];
+	let contextSavingsByPosition: SavingsItem[] = [];
 
 	let statsLoading = true;
 	let statsError: string | null = null;
@@ -140,6 +144,8 @@
 			contextPressure = data.contextPressure ?? [];
 			topExpensive = data.topExpensive ?? [];
 			avgTokensPerRequestByPosition = data.avgTokensPerRequestByPosition ?? [];
+			tokenBreakdownByPosition = data.tokenBreakdownByPosition ?? [];
+			contextSavingsByPosition = data.contextSavingsByPosition ?? [];
 		} catch (e) {
 			statsError = (e as Error).message;
 		} finally {

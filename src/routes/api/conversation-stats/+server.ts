@@ -52,7 +52,9 @@ const EMPTY_RESPONSE = {
 		{ label: 'No Context Events', count: 0 }
 	],
 	topExpensive: [],
-	avgTokensPerRequestByPosition: []
+	avgTokensPerRequestByPosition: [],
+	tokenBreakdownByPosition: [],
+	contextSavingsByPosition: []
 };
 
 export const GET: RequestHandler = ({ url }) => {
@@ -315,6 +317,79 @@ export const GET: RequestHandler = ({ url }) => {
 		avgTokens: Number(r.avgTokens)
 	}));
 
+	// ── Token breakdown by position (stacked by message classification) ──────
+	// Joins llm_request_messages to get per-classification token averages
+	const tokenBreakdownRows = db.prepare(`
+		SELECT
+			position,
+			AVG(system_tok)      AS avgSystem,
+			AVG(user_tok)        AS avgUser,
+			AVG(assistant_tok)   AS avgAssistant,
+			AVG(tool_call_tok)   AS avgToolCall,
+			AVG(tool_result_tok) AS avgToolResult
+		FROM (
+			SELECT
+				r.conversation_id,
+				ROW_NUMBER() OVER (PARTITION BY r.conversation_id ORDER BY r.started_at_ms ASC) AS position,
+				SUM(CASE WHEN m.classification = 'system'      THEN COALESCE(m.estimated_tokens, 0) ELSE 0 END) AS system_tok,
+				SUM(CASE WHEN m.classification = 'user'        THEN COALESCE(m.estimated_tokens, 0) ELSE 0 END) AS user_tok,
+				SUM(CASE WHEN m.classification = 'assistant'   THEN COALESCE(m.estimated_tokens, 0) ELSE 0 END) AS assistant_tok,
+				SUM(CASE WHEN m.classification = 'tool-call'   THEN COALESCE(m.estimated_tokens, 0) ELSE 0 END) AS tool_call_tok,
+				SUM(CASE WHEN m.classification = 'tool-result' THEN COALESCE(m.estimated_tokens, 0) ELSE 0 END) AS tool_result_tok
+			FROM llm_requests r
+			JOIN llm_request_messages m ON m.request_id = r.request_id
+			${whereClause}
+			GROUP BY r.conversation_id, r.request_id
+		)
+		WHERE position <= 15
+		GROUP BY position
+		ORDER BY position ASC
+	`).all(params) as Array<{
+		position: number;
+		avgSystem: number;
+		avgUser: number;
+		avgAssistant: number;
+		avgToolCall: number;
+		avgToolResult: number;
+	}>;
+
+	const tokenBreakdownByPosition = tokenBreakdownRows.map((r) => ({
+		pos: `#${r.position}`,
+		system: Math.round(Number(r.avgSystem) || 0),
+		user: Math.round(Number(r.avgUser) || 0),
+		assistant: Math.round(Number(r.avgAssistant) || 0),
+		toolCall: Math.round(Number(r.avgToolCall) || 0),
+		toolResult: Math.round(Number(r.avgToolResult) || 0)
+	}));
+
+	// ── Context savings by position ───────────────────────────────────────────
+	// Shows avg actual tokens sent vs tokens saved by context editing
+	const savingsRows = db.prepare(`
+		SELECT
+			position,
+			AVG(actual_tokens) AS avgActualTokens,
+			AVG(saved_tokens)  AS avgSavedTokens
+		FROM (
+			SELECT
+				r.conversation_id,
+				ROW_NUMBER() OVER (PARTITION BY r.conversation_id ORDER BY r.started_at_ms ASC) AS position,
+				COALESCE(r.context_runtime_estimated_input_tokens_after, r.input_tokens, 0) AS actual_tokens,
+				COALESCE(r.context_runtime_estimated_input_tokens_saved, 0) +
+					COALESCE(r.estimated_input_tokens_saved, 0)               AS saved_tokens
+			FROM llm_requests r
+			${whereClause}
+		)
+		WHERE position <= 15
+		GROUP BY position
+		ORDER BY position ASC
+	`).all(params) as Array<{ position: number; avgActualTokens: number; avgSavedTokens: number }>;
+
+	const contextSavingsByPosition = savingsRows.map((r) => ({
+		pos: `#${r.position}`,
+		actualTokens: Math.round(Number(r.avgActualTokens) || 0),
+		savedTokens: Math.round(Number(r.avgSavedTokens) || 0)
+	}));
+
 	return json({
 		summary,
 		lengthDistribution,
@@ -326,6 +401,8 @@ export const GET: RequestHandler = ({ url }) => {
 		toolStripping,
 		contextPressure,
 		topExpensive,
-		avgTokensPerRequestByPosition
+		avgTokensPerRequestByPosition,
+		tokenBreakdownByPosition,
+		contextSavingsByPosition
 	});
 };
