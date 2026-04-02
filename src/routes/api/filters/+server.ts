@@ -13,7 +13,7 @@ function hasTable(name: string): boolean {
 	}
 }
 
-const empty = { projects: [], agents: [], providers: [], models: [] };
+const empty = { projects: [], agents: [], providers: [], models: [], apiKeyIdentities: [] };
 
 export const GET: RequestHandler = () => {
 	if (!hasTable('llm_requests')) return json(empty);
@@ -37,7 +37,11 @@ export const GET: RequestHandler = () => {
 			`SELECT DISTINCT model AS value FROM llm_requests WHERE model IS NOT NULL ORDER BY model`
 		).all() as Record<string, unknown>[]).map((r) => r.value as string);
 
-		return json({ projects, agents, providers, models });
+		const apiKeyIdentities = (db.prepare(
+			`SELECT DISTINCT api_key_identity AS value FROM llm_requests WHERE api_key_identity IS NOT NULL ORDER BY api_key_identity`
+		).all() as Record<string, unknown>[]).map((r) => r.value as string);
+
+		return json({ projects, agents, providers, models, apiKeyIdentities });
 	} catch {
 		return json(empty);
 	}

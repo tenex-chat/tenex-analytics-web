@@ -9,6 +9,7 @@
 	let trends: Array<Record<string, number | string>> = [];
 	let byModel: Array<Record<string, number | string>> = [];
 	let byAgent: Array<Record<string, number | string>> = [];
+	let byApiKey: Array<Record<string, number | string>> = [];
 	let loading = true;
 	let error: string | null = null;
 
@@ -22,6 +23,7 @@
 			trends = data.trends ?? [];
 			byModel = data.byModel ?? [];
 			byAgent = data.byAgent ?? [];
+			byApiKey = data.byApiKey ?? [];
 		} catch (e) {
 			error = (e as Error).message;
 		} finally {
@@ -86,6 +88,18 @@
 				horizontal={true}
 			/>
 		</Card>
+
+		{#if byApiKey.length > 0}
+			<Card title="Cost by API Key">
+				<BarChart
+					data={byApiKey}
+					bars={[{ key: 'totalCost', label: 'Cost (USD)', color: CHART_COLORS.yellow }]}
+					xKey="apiKeyIdentity"
+					height={300}
+					horizontal={true}
+				/>
+			</Card>
+		{/if}
 	</div>
 
 	<!-- Table: cost by model -->

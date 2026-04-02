@@ -46,20 +46,28 @@ export const GET: RequestHandler = ({ url }) => {
 				COALESCE(SUM(total_tokens), 0) AS totalTokens,
 				COALESCE(SUM(cost_usd), 0) AS totalCost,
 				COUNT(*) AS requestCount,
-				MAX(started_at_ms) AS lastTimestampMs
+				MAX(started_at_ms) AS lastTimestampMs,
+				COALESCE(SUM(input_cache_read_tokens), 0) AS cacheReadTokens,
+				COALESCE(SUM(input_tokens), 0) AS inputTokens
 			FROM llm_requests
 			${clause}
 			GROUP BY conversation_id
 			ORDER BY lastTimestampMs DESC
-		`).all(params) as Record<string, unknown>[]).map((r) => ({
-			conversationId: r.conversationId as string,
-			agentSlug: r.agentSlug as string,
-			projectId: r.projectId as string,
-			totalTokens: Number(r.totalTokens),
-			totalCost: Number(r.totalCost),
-			requestCount: Number(r.requestCount),
-			lastTimestamp: new Date(Number(r.lastTimestampMs)).toISOString()
-		}));
+		`).all(params) as Record<string, unknown>[]).map((r) => {
+			const cacheRead = Number(r.cacheReadTokens);
+			const inputTok = Number(r.inputTokens);
+			const cacheEfficiency = inputTok > 0 ? Math.round((cacheRead / inputTok) * 10000) / 100 : 0;
+			return {
+				conversationId: r.conversationId as string,
+				agentSlug: r.agentSlug as string,
+				projectId: r.projectId as string,
+				totalTokens: Number(r.totalTokens),
+				totalCost: Number(r.totalCost),
+				requestCount: Number(r.requestCount),
+				lastTimestamp: new Date(Number(r.lastTimestampMs)).toISOString(),
+				cacheEfficiency
+			};
+		});
 
 		return json({ conversations });
 	} catch {

@@ -103,3 +103,166 @@ export function parseDateRange(url: URL): DateRange {
 		to: url.searchParams.get('to') ?? undefined
 	};
 }
+
+export interface EntityFilters {
+	model?: string;
+	agent?: string;
+	project?: string;
+	provider?: string;
+	apiKey?: string;
+}
+
+/**
+ * Parse entity filter query params (model, agent, project, provider).
+ */
+export function parseEntityFilters(url: URL): EntityFilters {
+	return {
+		model: url.searchParams.get('model') ?? undefined,
+		agent: url.searchParams.get('agent') ?? undefined,
+		project: url.searchParams.get('project') ?? undefined,
+		provider: url.searchParams.get('provider') ?? undefined,
+		apiKey: url.searchParams.get('apiKey') ?? undefined
+	};
+}
+
+/**
+ * Build additional WHERE clause conditions and params for entity filters.
+ * The returned conditions are appended to an existing WHERE clause using AND.
+ *
+ * @param filters  Parsed entity filters from parseEntityFilters()
+ * @param columns  Column name mapping (defaults to standard llm_requests column names)
+ */
+export function buildEntityFilter(
+	filters: EntityFilters,
+	columns: { model?: string; agent?: string; project?: string; provider?: string; apiKey?: string } = {}
+): { conditions: string[]; params: Record<string, string> } {
+	const conditions: string[] = [];
+	const params: Record<string, string> = {};
+
+	const modelCol = columns.model ?? 'model';
+	const agentCol = columns.agent ?? 'agent_slug';
+	const projectCol = columns.project ?? 'project_id';
+	const providerCol = columns.provider ?? 'provider';
+	const apiKeyCol = columns.apiKey ?? 'api_key_identity';
+
+	if (filters.model) {
+		conditions.push(`${modelCol} = @model`);
+		params.model = filters.model;
+	}
+	if (filters.agent) {
+		conditions.push(`${agentCol} = @agent`);
+		params.agent = filters.agent;
+	}
+	if (filters.project) {
+		conditions.push(`${projectCol} = @project`);
+		params.project = filters.project;
+	}
+	if (filters.provider) {
+		conditions.push(`${providerCol} = @provider`);
+		params.provider = filters.provider;
+	}
+	if (filters.apiKey) {
+		conditions.push(`${apiKeyCol} = @apiKey`);
+		params.apiKey = filters.apiKey;
+	}
+
+	return { conditions, params };
+}
+
+// ─── Unified request filter ───────────────────────────────────────────────────
+
+export interface RequestFilters extends DateRange, EntityFilters {}
+
+export interface RequestFilterOptions {
+	/** Column used for date range filtering. Defaults to 'started_at_ms'. */
+	dateColumn?: string;
+	/** Whether to include `status = 'success'` condition. Defaults to true. */
+	includeStatus?: boolean;
+	/** Whether to include project_id filter. Defaults to true. */
+	includeProject?: boolean;
+	/** Whether to include provider filter. Defaults to true. */
+	includeProvider?: boolean;
+}
+
+/**
+ * Parse all standard analytics query params from a URL in one call.
+ * Combines date range (from/to) with entity filters (model, agent, project, provider).
+ */
+export function parseRequestFilters(url: URL): RequestFilters {
+	return {
+		from: url.searchParams.get('from') ?? undefined,
+		to: url.searchParams.get('to') ?? undefined,
+		model: url.searchParams.get('model') ?? undefined,
+		agent: url.searchParams.get('agent') ?? undefined,
+		project: url.searchParams.get('project') ?? undefined,
+		provider: url.searchParams.get('provider') ?? undefined,
+		apiKey: url.searchParams.get('apiKey') ?? undefined
+	};
+}
+
+/**
+ * Build a complete WHERE clause with all analytics filters applied.
+ * Handles date range, status, and entity filters (model, agent, project, provider).
+ *
+ * Use this as the single filter builder for all llm_requests-backed endpoints.
+ */
+export function buildRequestFilter(
+	filters: RequestFilters,
+	options: RequestFilterOptions = {}
+): { clause: string; params: Record<string, number | string> } {
+	const {
+		dateColumn = 'started_at_ms',
+		includeStatus = true,
+		includeProject = true,
+		includeProvider = true
+	} = options;
+
+	const conditions: string[] = [];
+	const params: Record<string, number | string> = {};
+
+	// Date range
+	if (filters.from) {
+		conditions.push(`${dateColumn} >= @from`);
+		params.from = new Date(filters.from).getTime();
+	}
+	if (filters.to) {
+		const toDate = new Date(filters.to);
+		if (!filters.to.includes('T')) {
+			toDate.setHours(23, 59, 59, 999);
+		}
+		conditions.push(`${dateColumn} <= @to`);
+		params.to = toDate.getTime();
+	}
+
+	// Status
+	if (includeStatus) {
+		conditions.push("status = 'success'");
+	}
+
+	// Entity filters
+	if (filters.model) {
+		conditions.push('model = @model');
+		params.model = filters.model;
+	}
+	if (filters.agent) {
+		conditions.push('agent_slug = @agent');
+		params.agent = filters.agent;
+	}
+	if (includeProject && filters.project) {
+		conditions.push('project_id = @project');
+		params.project = filters.project;
+	}
+	if (includeProvider && filters.provider) {
+		conditions.push('provider = @provider');
+		params.provider = filters.provider;
+	}
+	if (filters.apiKey) {
+		conditions.push('api_key_identity = @apiKey');
+		params.apiKey = filters.apiKey;
+	}
+
+	return {
+		clause: conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '',
+		params
+	};
+}

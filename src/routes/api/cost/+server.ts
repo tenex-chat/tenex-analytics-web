@@ -1,7 +1,14 @@
 // GET /api/cost — cost breakdown by model, agent, and over time
+// Supports ?from=YYYY-MM-DD&to=YYYY-MM-DD&model=...&agent=...&project=...&provider=...
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/database.js';
+import {
+	getDb,
+	buildDateFilter,
+	parseDateRange,
+	parseEntityFilters,
+	buildEntityFilter
+} from '$lib/server/database.js';
 
 function hasTable(name: string): boolean {
 	try {
@@ -13,39 +20,30 @@ function hasTable(name: string): boolean {
 	}
 }
 
-function buildMsFilter(url: URL): { clause: string; params: Record<string, number> } {
-	const from = url.searchParams.get('from');
-	const to = url.searchParams.get('to');
-	const conditions: string[] = ["status = 'success'"];
-	const params: Record<string, number> = {};
-	if (from) {
-		conditions.push('started_at_ms >= @from');
-		params.from = new Date(from).getTime();
-	}
-	if (to) {
-		const toDate = new Date(to);
-		toDate.setHours(23, 59, 59, 999);
-		conditions.push('started_at_ms <= @to');
-		params.to = toDate.getTime();
-	}
-	return { clause: `WHERE ${conditions.join(' AND ')}`, params };
-}
-
-const empty = { trends: [], byModel: [], byAgent: [] };
+const empty = { trends: [], byModel: [], byAgent: [], byApiKey: [] };
 
 export const GET: RequestHandler = ({ url }) => {
 	if (!hasTable('llm_requests')) return json(empty);
 
 	try {
 		const db = getDb();
-		const { clause, params } = buildMsFilter(url);
+		const range = parseDateRange(url);
+		const { clause, params: dateParams } = buildDateFilter(range);
+		const { conditions: entityConditions, params: entityParams } = buildEntityFilter(
+			parseEntityFilters(url)
+		);
+		const params = { ...dateParams, ...entityParams };
+		const allConditions = ["status = 'success'", ...entityConditions];
+		const clause_ = clause
+			? clause + ' AND ' + allConditions.join(' AND ')
+			: 'WHERE ' + allConditions.join(' AND ');
 
 		const trends = (db.prepare(`
 			SELECT
 				date(started_at_ms/1000, 'unixepoch') AS date,
 				COALESCE(SUM(cost_usd), 0) AS totalCost
 			FROM llm_requests
-			${clause}
+			${clause_}
 			GROUP BY date
 			ORDER BY date ASC
 		`).all(params) as Record<string, unknown>[]).map((r) => ({ date: r.date as string, totalCost: Number(r.totalCost) }));
@@ -55,7 +53,7 @@ export const GET: RequestHandler = ({ url }) => {
 				COALESCE(model, 'unknown') AS model,
 				COALESCE(SUM(cost_usd), 0) AS totalCost
 			FROM llm_requests
-			${clause}
+			${clause_}
 			GROUP BY model
 			ORDER BY totalCost DESC
 		`).all(params) as Record<string, unknown>[]).map((r) => ({ model: r.model as string, totalCost: Number(r.totalCost) }));
@@ -65,12 +63,22 @@ export const GET: RequestHandler = ({ url }) => {
 				COALESCE(agent_slug, 'unknown') AS agentSlug,
 				COALESCE(SUM(cost_usd), 0) AS totalCost
 			FROM llm_requests
-			${clause}
+			${clause_}
 			GROUP BY agent_slug
 			ORDER BY totalCost DESC
 		`).all(params) as Record<string, unknown>[]).map((r) => ({ agentSlug: r.agentSlug as string, totalCost: Number(r.totalCost) }));
 
-		return json({ trends, byModel, byAgent });
+		const byApiKey = (db.prepare(`
+			SELECT
+				COALESCE(api_key_identity, 'unknown') AS apiKeyIdentity,
+				COALESCE(SUM(cost_usd), 0) AS totalCost
+			FROM llm_requests
+			${clause_}
+			GROUP BY api_key_identity
+			ORDER BY totalCost DESC
+		`).all(params) as Record<string, unknown>[]).map((r) => ({ apiKeyIdentity: r.apiKeyIdentity as string, totalCost: Number(r.totalCost) }));
+
+		return json({ trends, byModel, byAgent, byApiKey });
 	} catch {
 		return json(empty);
 	}

@@ -1,7 +1,14 @@
 // GET /api/context-windows — context window utilization from context_management_events
+// Supports ?from=YYYY-MM-DD&to=YYYY-MM-DD&model=...&agent=...&project=...&provider=...
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/database.js';
+import {
+	getDb,
+	buildDateFilter,
+	parseDateRange,
+	parseEntityFilters,
+	buildEntityFilter
+} from '$lib/server/database.js';
 
 function hasTable(name: string): boolean {
 	try {
@@ -13,24 +20,6 @@ function hasTable(name: string): boolean {
 	}
 }
 
-function buildMsFilter(url: URL): { clause: string; params: Record<string, number> } {
-	const from = url.searchParams.get('from');
-	const to = url.searchParams.get('to');
-	const conditions: string[] = [];
-	const params: Record<string, number> = {};
-	if (from) {
-		conditions.push('created_at_ms >= @from');
-		params.from = new Date(from).getTime();
-	}
-	if (to) {
-		const toDate = new Date(to);
-		toDate.setHours(23, 59, 59, 999);
-		conditions.push('created_at_ms <= @to');
-		params.to = toDate.getTime();
-	}
-	return { clause: conditions.length ? `WHERE ${conditions.join(' AND ')}` : '', params };
-}
-
 const empty = { events: [], byAgent: [] };
 
 export const GET: RequestHandler = ({ url }) => {
@@ -38,7 +27,19 @@ export const GET: RequestHandler = ({ url }) => {
 
 	try {
 		const db = getDb();
-		const { clause, params } = buildMsFilter(url);
+		// context_management_events uses created_at_ms column
+		const range = parseDateRange(url);
+		const { clause, params: dateParams } = buildDateFilter(range, 'created_at_ms');
+		const { conditions: entityConditions, params: entityParams } = buildEntityFilter(
+			parseEntityFilters(url),
+			{ agent: 'agent_slug', model: 'model' }
+		);
+		const params = { ...dateParams, ...entityParams };
+		const clause_ = entityConditions.length
+			? clause
+				? clause + ' AND ' + entityConditions.join(' AND ')
+				: 'WHERE ' + entityConditions.join(' AND ')
+			: clause;
 
 		const events = (db.prepare(`
 			SELECT
@@ -50,7 +51,7 @@ export const GET: RequestHandler = ({ url }) => {
 				COALESCE(utilization_percent, 0) AS utilization,
 				COALESCE(strategy_name, 'unknown') AS strategy
 			FROM context_management_events
-			${clause}
+			${clause_}
 			ORDER BY created_at_ms DESC
 			LIMIT 500
 		`).all(params) as Record<string, unknown>[]).map((r) => ({
@@ -70,7 +71,7 @@ export const GET: RequestHandler = ({ url }) => {
 				ROUND(MAX(utilization_percent), 2) AS maxUtilization,
 				COUNT(*) AS pruneCount
 			FROM context_management_events
-			${clause}
+			${clause_}
 			GROUP BY agent_slug
 			ORDER BY maxUtilization DESC
 		`).all(params) as Record<string, unknown>[]).map((r) => ({

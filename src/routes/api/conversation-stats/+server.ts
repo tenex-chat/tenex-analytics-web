@@ -1,9 +1,16 @@
 // GET /api/conversation-stats — aggregate stats across all conversations
-// Supports ?from=YYYY-MM-DD&to=YYYY-MM-DD&project=...&agent=...
+// Supports ?from=YYYY-MM-DD&to=YYYY-MM-DD&model=...&agent=...&project=...&provider=...
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, buildDateFilter, parseDateRange, hasTelemetryTable } from '$lib/server/database.js';
+import {
+	getDb,
+	buildDateFilter,
+	parseDateRange,
+	hasTelemetryTable,
+	parseEntityFilters,
+	buildEntityFilter
+} from '$lib/server/database.js';
 
 const EMPTY_RESPONSE = {
 	summary: {
@@ -54,12 +61,17 @@ export const GET: RequestHandler = ({ url }) => {
 	}
 
 	const range = parseDateRange(url);
-	const { clause, params } = buildDateFilter(range);
+	const { clause, params: dateParams } = buildDateFilter(range);
+	const { conditions: entityConditions, params: entityParams } = buildEntityFilter(
+		parseEntityFilters(url)
+	);
+	const params = { ...dateParams, ...entityParams };
 	const db = getDb();
 
+	const extraConditions = ["status = 'success'", 'conversation_id IS NOT NULL', ...entityConditions];
 	const whereClause = clause
-		? clause + " AND status = 'success' AND conversation_id IS NOT NULL"
-		: "WHERE status = 'success' AND conversation_id IS NOT NULL";
+		? clause + ' AND ' + extraConditions.join(' AND ')
+		: 'WHERE ' + extraConditions.join(' AND ');
 
 	// ── Summary ──────────────────────────────────────────────────────────────
 	const summaryRow = db.prepare(`
@@ -269,7 +281,7 @@ export const GET: RequestHandler = ({ url }) => {
 		FROM llm_requests
 		${whereClause}
 		GROUP BY conversation_id
-		ORDER BY totalCost DESC
+		ORDER BY totalTokens DESC
 		LIMIT 10
 	`).all(params) as Array<Record<string, string | number>>;
 

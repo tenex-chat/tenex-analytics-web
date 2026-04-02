@@ -14,6 +14,7 @@ export interface FilterState {
 	agent: string | null;
 	provider: string | null;
 	model: string | null;
+	apiKey: string | null;
 }
 
 const SUB_DAY_PRESETS: TimePreset[] = ['15m', '1h', '4h', '12h', '24h'];
@@ -41,7 +42,7 @@ export function presetToDates(preset: Exclude<TimePreset, 'custom'>): { from: Da
 
 function makeDefault(): FilterState {
 	const { from, to } = presetToDates('30d');
-	return { from, to, preset: '30d', project: null, agent: null, provider: null, model: null };
+	return { from, to, preset: '30d', project: null, agent: null, provider: null, model: null, apiKey: null };
 }
 
 function createFiltersStore() {
@@ -85,5 +86,6 @@ export const filterParams = derived(filters, ($f) => {
 	if ($f.agent) p.set('agent', $f.agent);
 	if ($f.provider) p.set('provider', $f.provider);
 	if ($f.model) p.set('model', $f.model);
+	if ($f.apiKey) p.set('apiKey', $f.apiKey);
 	return p.toString();
 });
