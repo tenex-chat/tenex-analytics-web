@@ -25,9 +25,9 @@
 	const error = $derived($telemetry.error);
 
 	// Token usage chart data
-	let tokenPoints: Array<Record<string, number | string>> = [];
-	let tokenLoading = true;
-	let tokenError: string | null = null;
+	let tokenPoints: Array<Record<string, number | string>> = $state([]);
+	let tokenLoading = $state(true);
+	let tokenError: string | null = $state(null);
 
 	async function loadTokens() {
 		tokenLoading = true;
@@ -45,9 +45,9 @@
 	}
 
 	// Cache chart data
-	let cacheByModel: Array<Record<string, number | string>> = [];
-	let cacheLoading = true;
-	let cacheError: string | null = null;
+	let cacheByModel: Array<Record<string, number | string>> = $state([]);
+	let cacheLoading = $state(true);
+	let cacheError: string | null = $state(null);
 
 	async function loadCache() {
 		cacheLoading = true;

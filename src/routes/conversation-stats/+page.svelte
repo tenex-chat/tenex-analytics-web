@@ -29,26 +29,26 @@
 		totalTokens: number;
 	};
 
-	let summary: Summary = {
+	let summary: Summary = $state({
 		totalConversations: 0,
 		avgRequestsPerConversation: 0,
 		avgTokensPerConversation: 0,
 		avgCostPerConversation: 0,
 		avgDurationSeconds: 0
-	};
-	let lengthDistribution: BucketItem[] = [];
-	let tokenDistribution: BucketItem[] = [];
-	let costDistribution: BucketItem[] = [];
-	let dailyNewConversations: DailyItem[] = [];
-	let weeklyAvgRequests: WeeklyItem[] = [];
-	let tokenGrowth: GrowthItem[] = [];
-	let toolStripping: LabelItem[] = [];
-	let contextPressure: LabelItem[] = [];
-	let topExpensive: ExpensiveItem[] = [];
-	let avgTokensPerRequestByPosition: PositionItem[] = [];
+	});
+	let lengthDistribution: BucketItem[] = $state([]);
+	let tokenDistribution: BucketItem[] = $state([]);
+	let costDistribution: BucketItem[] = $state([]);
+	let dailyNewConversations: DailyItem[] = $state([]);
+	let weeklyAvgRequests: WeeklyItem[] = $state([]);
+	let tokenGrowth: GrowthItem[] = $state([]);
+	let toolStripping: LabelItem[] = $state([]);
+	let contextPressure: LabelItem[] = $state([]);
+	let topExpensive: ExpensiveItem[] = $state([]);
+	let avgTokensPerRequestByPosition: PositionItem[] = $state([]);
 
-	let loading = true;
-	let error: string | null = null;
+	let loading = $state(true);
+	let error: string | null = $state(null);
 
 	async function fetchData() {
 		loading = true;

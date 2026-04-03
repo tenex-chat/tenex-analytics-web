@@ -6,10 +6,10 @@
 	interface AgentSummary { agentSlug: string; avgUtilization: number; maxUtilization: number; pruneCount: number; }
 	interface ContextEvent { timestamp: string; agentSlug: string; model: string; tokensBefore: number; tokensAfter: number; utilization: number; strategy: string; }
 
-	let byAgent: AgentSummary[] = [];
-	let events: ContextEvent[] = [];
-	let loading = true;
-	let error: string | null = null;
+	let byAgent: AgentSummary[] = $state([]);
+	let events: ContextEvent[] = $state([]);
+	let loading = $state(true);
+	let error: string | null = $state(null);
 
 	async function load() {
 		loading = true;

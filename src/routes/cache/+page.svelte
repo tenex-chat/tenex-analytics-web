@@ -6,11 +6,11 @@
 	import { formatNumber, formatPercent } from '$lib/utils/format.js';
 	import { CHART_COLORS, getCacheEfficiencyColor } from '$lib/utils/colors.js';
 
-	let overall = { efficiencyPercent: 0, totalCacheReadTokens: 0, totalCacheWriteTokens: 0 };
-	let byModel: Array<Record<string, number | string>> = [];
-	let byDay: Array<Record<string, number | string>> = [];
-	let loading = true;
-	let error: string | null = null;
+	let overall = $state({ efficiencyPercent: 0, totalCacheReadTokens: 0, totalCacheWriteTokens: 0 });
+	let byModel: Array<Record<string, number | string>> = $state([]);
+	let byDay: Array<Record<string, number | string>> = $state([]);
+	let loading = $state(true);
+	let error: string | null = $state(null);
 
 	async function load() {
 		loading = true;

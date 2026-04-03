@@ -23,11 +23,11 @@
 	type SortCol = keyof Conversation;
 	type SortDir = 'asc' | 'desc';
 
-	let conversations: Conversation[] = [];
-	let listLoading = true;
-	let listError: string | null = null;
-	let sortCol: SortCol = 'lastTimestamp';
-	let sortDir: SortDir = 'desc';
+	let conversations: Conversation[] = $state([]);
+	let listLoading = $state(true);
+	let listError: string | null = $state(null);
+	let sortCol: SortCol = $state('lastTimestamp');
+	let sortDir: SortDir = $state('desc');
 
 	async function loadList() {
 		listLoading = true;
@@ -44,7 +44,7 @@
 		}
 	}
 
-	let mounted = false;
+	let mounted = $state(false);
 	$effect(() => {
 		mounted = true;
 		loadList();
@@ -108,28 +108,28 @@
 		totalTokens: number;
 	};
 
-	let summary: Summary = {
+	let summary: Summary = $state({
 		totalConversations: 0,
 		avgRequestsPerConversation: 0,
 		avgTokensPerConversation: 0,
 		avgCostPerConversation: 0,
 		avgDurationSeconds: 0
-	};
-	let lengthDistribution: BucketItem[] = [];
-	let tokenDistribution: BucketItem[] = [];
-	let costDistribution: BucketItem[] = [];
-	let dailyNewConversations: DailyItem[] = [];
-	let weeklyAvgRequests: WeeklyItem[] = [];
-	let tokenGrowth: GrowthItem[] = [];
-	let toolStripping: LabelItem[] = [];
-	let contextPressure: LabelItem[] = [];
-	let topExpensive: ExpensiveItem[] = [];
-	let avgTokensPerRequestByPosition: PositionItem[] = [];
-	let tokenBreakdownByPosition: BreakdownItem[] = [];
-	let contextSavingsByPosition: SavingsItem[] = [];
+	});
+	let lengthDistribution: BucketItem[] = $state([]);
+	let tokenDistribution: BucketItem[] = $state([]);
+	let costDistribution: BucketItem[] = $state([]);
+	let dailyNewConversations: DailyItem[] = $state([]);
+	let weeklyAvgRequests: WeeklyItem[] = $state([]);
+	let tokenGrowth: GrowthItem[] = $state([]);
+	let toolStripping: LabelItem[] = $state([]);
+	let contextPressure: LabelItem[] = $state([]);
+	let topExpensive: ExpensiveItem[] = $state([]);
+	let avgTokensPerRequestByPosition: PositionItem[] = $state([]);
+	let tokenBreakdownByPosition: BreakdownItem[] = $state([]);
+	let contextSavingsByPosition: SavingsItem[] = $state([]);
 
-	let statsLoading = true;
-	let statsError: string | null = null;
+	let statsLoading = $state(true);
+	let statsError: string | null = $state(null);
 
 	async function fetchStats() {
 		statsLoading = true;

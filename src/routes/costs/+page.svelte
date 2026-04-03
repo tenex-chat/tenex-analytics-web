@@ -6,12 +6,12 @@
 	import { formatCost } from '$lib/utils/format.js';
 	import { CHART_COLORS } from '$lib/utils/colors.js';
 
-	let trends: Array<Record<string, number | string>> = [];
-	let byModel: Array<Record<string, number | string>> = [];
-	let byAgent: Array<Record<string, number | string>> = [];
-	let byApiKey: Array<Record<string, number | string>> = [];
-	let loading = true;
-	let error: string | null = null;
+	let trends: Array<Record<string, number | string>> = $state([]);
+	let byModel: Array<Record<string, number | string>> = $state([]);
+	let byAgent: Array<Record<string, number | string>> = $state([]);
+	let byApiKey: Array<Record<string, number | string>> = $state([]);
+	let loading = $state(true);
+	let error: string | null = $state(null);
 
 	async function load() {
 		loading = true;

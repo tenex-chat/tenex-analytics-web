@@ -8,10 +8,10 @@
 	type Granularity = 'hour' | 'day' | 'week';
 	type TokenPoint = { date: string; inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number; totalTokens: number; requests: number };
 
-	let points: TokenPoint[] = [];
-	let loading = true;
-	let error: string | null = null;
-	let granularity: Granularity = 'day';
+	let points: TokenPoint[] = $state([]);
+	let loading = $state(true);
+	let error: string | null = $state(null);
+	let granularity: Granularity = $state('day');
 	const granularities: Granularity[] = ['day', 'hour', 'week'];
 
 	async function fetchData() {

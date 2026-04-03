@@ -10,15 +10,15 @@
 	interface Message { role: string; classification: string; tokenCount: number; contentPreview: string; systemReminderCount: number; }
 	interface LLMRequest { id: string; timestamp: string; model: string; inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number; totalCostUsd: number; messages: Message[]; }
 
-	let conversationId = '';
-	let requests: LLMRequest[] = [];
-	let loading = true;
-	let error: string | null = null;
-	let expanded = new Set<string>();
+	let conversationId = $state('');
+	let requests: LLMRequest[] = $state([]);
+	let loading = $state(true);
+	let error: string | null = $state(null);
+	let expanded = $state(new Set<string>());
 
-	let stats: ConversationStats | null = null;
-	let statsLoading = true;
-	let statsError: string | null = null;
+	let stats: ConversationStats | null = $state(null);
+	let statsLoading = $state(true);
+	let statsError: string | null = $state(null);
 
 	const id = $derived($page.params.id ?? '');
 

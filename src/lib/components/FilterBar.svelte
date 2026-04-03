@@ -11,15 +11,15 @@
 		apiKeyIdentities: string[];
 	}
 
-	let options: FilterOptions = { projects: [], agents: [], providers: [], models: [], apiKeyIdentities: [] };
+	let options: FilterOptions = $state({ projects: [], agents: [], providers: [], models: [], apiKeyIdentities: [] });
 
 	// Local bound values for custom date pickers
-	let fromVal = formatDate($filters.from);
-	let toVal = formatDate($filters.to);
-	let projectVal = $filters.project ?? '';
-	let agentVal = $filters.agent ?? '';
-	let modelVal = $filters.model ?? '';
-	let apiKeyVal = $filters.apiKey ?? '';
+	let fromVal = $state(formatDate($filters.from));
+	let toVal = $state(formatDate($filters.to));
+	let projectVal = $state($filters.project ?? '');
+	let agentVal = $state($filters.agent ?? '');
+	let modelVal = $state($filters.model ?? '');
+	let apiKeyVal = $state($filters.apiKey ?? '');
 
 	const PRESETS: { label: string; value: TimePreset }[] = [
 		{ label: '15m', value: '15m' },
