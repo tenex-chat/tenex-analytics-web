@@ -75,7 +75,10 @@
 		}
 	}
 
-	$: $filterParams, fetchData();
+	$effect(() => {
+		$filterParams;
+		fetchData();
+	});
 
 	function formatDuration(seconds: number): string {
 		if (seconds < 60) return `${Math.round(seconds)}s`;
@@ -89,14 +92,14 @@
 	}
 
 	// Convert position-based data to use string keys for BarChart
-	$: positionData = avgTokensPerRequestByPosition.map((p) => ({
+	const positionData = $derived(avgTokensPerRequestByPosition.map((p) => ({
 		pos: `#${p.position}`,
 		avgTokens: p.avgTokens
-	}));
+	})));
 
 	// Convert label-based data to use string keys for BarChart
-	$: toolStrippingData = toolStripping.map((t) => ({ label: t.label, count: t.count }));
-	$: contextPressureData = contextPressure.map((c) => ({ label: c.label, count: c.count }));
+	const toolStrippingData = $derived(toolStripping.map((t) => ({ label: t.label, count: t.count })));
+	const contextPressureData = $derived(contextPressure.map((c) => ({ label: c.label, count: c.count })));
 </script>
 
 <svelte:head><title>Conversation Stats — TENEX Analytics</title></svelte:head>

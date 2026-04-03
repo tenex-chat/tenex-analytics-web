@@ -119,7 +119,7 @@
 	}
 
 	const activePreset = $derived($filters.preset);
-	const hasFilters = $derived(projectVal || agentVal || modelVal || apiKeyVal);
+	const hasFilters = $derived(!!(projectVal || agentVal || modelVal || apiKeyVal));
 </script>
 
 <div class="filter-bar">

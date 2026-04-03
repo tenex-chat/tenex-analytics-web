@@ -86,7 +86,7 @@
 	// ── Chart data derived from timeSeries ───────────────────────────────────
 
 	// Each entry gets a short label like "#1", "#2", …
-	$: chartData = stats?.timeSeries.map((p, i) => ({
+	const chartData = $derived(stats?.timeSeries.map((p, i) => ({
 		label: `#${i + 1}`,
 		// token breakdown
 		tokensUsed: p.tokensUsed,
@@ -109,29 +109,29 @@
 		// context pressure signals (0/1 bars for event markers)
 		contextManagementEvent: p.contextManagementEvent,
 		anthropicClearToolUses: p.anthropicClearToolUses
-	})) ?? [];
+	})) ?? []);
 
 	// Show token breakdown chart only when there's cache or split data worth showing
-	$: hasTokenBreakdown = stats?.timeSeries.some(
+	const hasTokenBreakdown = $derived(stats?.timeSeries.some(
 		(p) => p.cacheReadTokens > 0 || p.cacheWriteTokens > 0
-	) ?? false;
+	) ?? false);
 
 	// Show context pressure chart only when there's something to show
-	$: hasContextPressure = stats
+	const hasContextPressure = $derived(stats
 		? stats.summary.requestsWithContextManagement > 0 ||
 		  stats.summary.requestsWithAnthropicToolClear > 0 ||
 		  stats.summary.totalToolCallsStripped > 0
-		: false;
+		: false);
 
 	// Show tool activity chart only when tool calls exist
-	$: hasToolActivity = (stats?.summary.totalToolCalls ?? 0) > 0;
+	const hasToolActivity = $derived((stats?.summary.totalToolCalls ?? 0) > 0);
 
 	// Show cache chart only when cache data exists
-	$: hasCacheData = (stats?.summary.totalCacheReadTokens ?? 0) > 0 ||
-		(stats?.summary.totalCacheWriteTokens ?? 0) > 0;
+	const hasCacheData = $derived((stats?.summary.totalCacheReadTokens ?? 0) > 0 ||
+		(stats?.summary.totalCacheWriteTokens ?? 0) > 0);
 
 	// Annotation markers for Chart 1 (Total Tokens per Request)
-	$: tokenChartAnnotations = (() => {
+	const tokenChartAnnotations = $derived((() => {
 		if (!chartData.length) return [];
 		const markers: Array<{ index: number; color: string; label: string }> = [];
 		for (let i = 0; i < chartData.length; i++) {
@@ -155,7 +155,7 @@
 			}
 		}
 		return markers;
-	})();
+	})());
 </script>
 
 <svelte:head><title>Conversation — TENEX Analytics</title></svelte:head>
@@ -426,7 +426,7 @@
 			<div class="timeline">
 				{#each requests as req}
 					<div class="request-card">
-						<button class="request-header" on:click={() => toggleExpand(req.id)}>
+						<button class="request-header" onclick={() => toggleExpand(req.id)}>
 							<div class="req-meta">
 								<span class="req-time">{req.timestamp?.slice(0, 19) ?? '—'}</span>
 								<span class="req-model">{req.model}</span>

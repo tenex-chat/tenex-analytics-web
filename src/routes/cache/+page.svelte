@@ -29,9 +29,12 @@
 		}
 	}
 
-	$: $filterParams, load();
+	$effect(() => {
+		$filterParams;
+		load();
+	});
 
-	$: effColor = getCacheEfficiencyColor(overall.efficiencyPercent);
+	const effColor = $derived(getCacheEfficiencyColor(overall.efficiencyPercent));
 </script>
 
 <svelte:head><title>Cache Efficiency — TENEX Analytics</title></svelte:head>

@@ -1,8 +1,10 @@
 <script lang="ts">
-	export let title: string = '';
-	export let loading: boolean = false;
-	export let error: string | null = null;
-	export let class_: string = '';
+	const { title = '', loading = false, error = null, class_ = '' } = $props<{
+		title?: string;
+		loading?: boolean;
+		error?: string | null;
+		class_?: string;
+	}>();
 </script>
 
 <div class="chart-card {class_}">

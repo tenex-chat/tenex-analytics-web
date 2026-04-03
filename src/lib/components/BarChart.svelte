@@ -13,17 +13,19 @@
 
 	ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-	export let data: Array<Record<string, number | string>> = [];
-	export let bars: Array<{ key: string; label: string; color?: string }> = [];
-	export let xKey: string;
-	export let height: number = 300;
-	export let title: string | undefined = undefined;
-	export let horizontal: boolean = false;
-	export let stacked: boolean = false;
+	const { data = [], bars = [], xKey, height = 300, title = undefined, horizontal = false, stacked = false } = $props<{
+		data?: Array<Record<string, number | string>>;
+		bars?: Array<{ key: string; label: string; color?: string }>;
+		xKey: string;
+		height?: number;
+		title?: string;
+		horizontal?: boolean;
+		stacked?: boolean;
+	}>();
 
-	$: theme = getChartTheme();
+	const theme = $derived(getChartTheme());
 
-	$: chartData = {
+	const chartData = $derived({
 		labels: data.map((d) => d[xKey] as string),
 		datasets: bars.map((bar, i) => {
 			const color = bar.color ?? SERIES_COLORS[i % SERIES_COLORS.length];
@@ -37,9 +39,9 @@
 				stack: stacked ? 'stack' : undefined
 			};
 		})
-	};
+	});
 
-	$: options = {
+	const options = $derived({
 		responsive: true,
 		maintainAspectRatio: false,
 		indexAxis: (horizontal ? 'y' : 'x') as 'x' | 'y',
@@ -81,7 +83,7 @@
 				grid: { color: theme.gridColor }
 			}
 		}
-	};
+	});
 </script>
 
 {#if data.length === 0}

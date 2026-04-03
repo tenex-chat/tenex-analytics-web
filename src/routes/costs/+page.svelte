@@ -31,11 +31,14 @@
 		}
 	}
 
-	$: $filterParams, load();
+	$effect(() => {
+		$filterParams;
+		load();
+	});
 
-	$: totalCost = trends.reduce((sum, t) => sum + Number(t.totalCost), 0);
-	$: modelsUsed = byModel.length;
-	$: agentsUsed = byAgent.length;
+	const totalCost = $derived(trends.reduce((sum, t) => sum + Number(t.totalCost), 0));
+	const modelsUsed = $derived(byModel.length);
+	const agentsUsed = $derived(byAgent.length);
 </script>
 
 <svelte:head><title>Cost Analysis — TENEX Analytics</title></svelte:head>

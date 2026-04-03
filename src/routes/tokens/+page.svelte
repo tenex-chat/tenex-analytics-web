@@ -29,14 +29,17 @@
 		}
 	}
 
-	$: $filterParams, fetchData();
-	$: granularity, fetchData();
+	$effect(() => {
+		$filterParams;
+		granularity;
+		fetchData();
+	});
 
-	$: totalInput = points.reduce((s, p) => s + p.inputTokens, 0);
-	$: totalOutput = points.reduce((s, p) => s + p.outputTokens, 0);
-	$: totalCacheRead = points.reduce((s, p) => s + p.cacheReadTokens, 0);
-	$: totalCacheWrite = points.reduce((s, p) => s + p.cacheWriteTokens, 0);
-	$: topPoints = [...points].sort((a, b) => b.totalTokens - a.totalTokens).slice(0, 10);
+	const totalInput = $derived(points.reduce((s, p) => s + p.inputTokens, 0));
+	const totalOutput = $derived(points.reduce((s, p) => s + p.outputTokens, 0));
+	const totalCacheRead = $derived(points.reduce((s, p) => s + p.cacheReadTokens, 0));
+	const totalCacheWrite = $derived(points.reduce((s, p) => s + p.cacheWriteTokens, 0));
+	const topPoints = $derived([...points].sort((a, b) => b.totalTokens - a.totalTokens).slice(0, 10));
 </script>
 
 <svelte:head><title>Token Analysis — TENEX Analytics</title></svelte:head>
@@ -49,7 +52,7 @@
 				<button
 					class="toggle-btn"
 					class:active={granularity === g}
-					on:click={() => { granularity = g; }}
+					onclick={() => { granularity = g; }}
 				>{g}</button>
 			{/each}
 		</div>

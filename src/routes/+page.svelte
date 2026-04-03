@@ -15,11 +15,14 @@
 		await telemetry.fetchAll(params);
 	}
 
-	$: $filterParams, loadSummary();
+	$effect(() => {
+		$filterParams;
+		loadSummary();
+	});
 
-	$: summary = $telemetry.summary;
-	$: loading = $telemetry.loading;
-	$: error = $telemetry.error;
+	const summary = $derived($telemetry.summary);
+	const loading = $derived($telemetry.loading);
+	const error = $derived($telemetry.error);
 
 	// Token usage chart data
 	let tokenPoints: Array<Record<string, number | string>> = [];
@@ -61,8 +64,14 @@
 		}
 	}
 
-	$: $filterParams, loadTokens();
-	$: $filterParams, loadCache();
+	$effect(() => {
+		$filterParams;
+		loadTokens();
+	});
+	$effect(() => {
+		$filterParams;
+		loadCache();
+	});
 </script>
 
 <svelte:head>

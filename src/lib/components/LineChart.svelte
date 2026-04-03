@@ -15,18 +15,20 @@
 
 	ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
-	export let data: Array<Record<string, number | string>> = [];
-	export let lines: Array<{ key: string; label: string; color?: string }> = [];
-	export let xKey: string;
-	export let height: number = 300;
-	export let title: string | undefined = undefined;
-	export let annotations: Array<{ index: number; color: string; label: string }> = [];
-	/** When true, renders as a stacked area chart */
-	export let stacked: boolean = false;
+	const { data = [], lines = [], xKey, height = 300, title = undefined, annotations = [], stacked = false } = $props<{
+		data?: Array<Record<string, number | string>>;
+		lines?: Array<{ key: string; label: string; color?: string }>;
+		xKey: string;
+		height?: number;
+		title?: string;
+		/** When true, renders as a stacked area chart */
+		annotations?: Array<{ index: number; color: string; label: string }>;
+		stacked?: boolean;
+	}>();
 
-	$: theme = getChartTheme();
+	const theme = $derived(getChartTheme());
 
-	$: chartData = {
+	const chartData = $derived({
 		labels: data.map((d) => d[xKey] as string),
 		datasets: lines.map((line, i) => {
 			const color = line.color ?? SERIES_COLORS[i % SERIES_COLORS.length];
@@ -42,9 +44,9 @@
 				fill: stacked ? 'stack' : false
 			};
 		})
-	};
+	});
 
-	$: options = {
+	const options = $derived({
 		responsive: true,
 		maintainAspectRatio: false,
 		interaction: {
@@ -84,19 +86,19 @@
 				grid: { color: theme.gridColor }
 			}
 		}
-	};
+	});
 
 	// Deduplicate annotation labels for the legend
-	$: annotationLegend = annotations.reduce<Array<{ color: string; label: string }>>(
+	const annotationLegend = $derived(annotations.reduce<Array<{ color: string; label: string }>>(
 		(acc, a) => {
 			if (!acc.some((x) => x.label === a.label)) acc.push({ color: a.color, label: a.label });
 			return acc;
 		},
 		[]
-	);
+	));
 
 	// Group annotations by index so multiple events at the same point stack
-	$: annotationsByIndex = annotations.reduce<Map<number, Array<{ color: string; label: string }>>>(
+	const annotationsByIndex = $derived(annotations.reduce<Map<number, Array<{ color: string; label: string }>>>(
 		(map, a) => {
 			const list = map.get(a.index) ?? [];
 			list.push({ color: a.color, label: a.label });
@@ -104,9 +106,9 @@
 			return map;
 		},
 		new Map()
-	);
+	));
 
-	$: totalPoints = data.length;
+	const totalPoints = $derived(data.length);
 </script>
 
 {#if data.length === 0}

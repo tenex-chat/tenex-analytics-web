@@ -27,9 +27,12 @@
 		}
 	}
 
-	$: $filterParams, load();
+	$effect(() => {
+		$filterParams;
+		load();
+	});
 
-	$: nearLimit = byAgent.filter((a) => a.maxUtilization > 80).length;
+	const nearLimit = $derived(byAgent.filter((a) => a.maxUtilization > 80).length);
 </script>
 
 <svelte:head><title>Context Windows — TENEX Analytics</title></svelte:head>

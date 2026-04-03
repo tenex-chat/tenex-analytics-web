@@ -7,7 +7,7 @@
 	}
 </script>
 
-<button class="theme-toggle" on:click={toggle} title="Toggle theme" aria-label="Toggle theme">
+<button class="theme-toggle" onclick={toggle} title="Toggle theme" aria-label="Toggle theme">
 	{dark ? '☀' : '🌙'}
 </button>
 
