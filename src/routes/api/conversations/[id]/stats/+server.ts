@@ -59,7 +59,11 @@ export const GET: RequestHandler = ({ params }) => {
 				COALESCE(r.input_cache_read_tokens, 0) AS cacheReadTokens,
 				COALESCE(r.input_cache_write_tokens, 0) AS cacheWriteTokens,
 				COALESCE(r.input_tokens, 0) + COALESCE(r.output_tokens, 0) AS tokensUsed,
-				COALESCE(r.anthropic_clear_tool_uses_enabled, 0) AS anthropicClearToolUses
+				CASE
+					WHEN COALESCE(r.provider_context_cleared_tool_uses, 0) > 0 THEN 1
+					ELSE 0
+				END AS anthropicClearToolUses,
+				COALESCE(r.provider_context_cleared_input_tokens, 0) AS providerClearedInputTokens
 			FROM llm_requests r
 			WHERE r.conversation_id = @conversationId
 			ORDER BY r.started_at_ms ASC
@@ -155,7 +159,8 @@ export const GET: RequestHandler = ({ params }) => {
 			toolCallsCount: toolCallCountByRequest.get(r.id as string) ?? 0,
 			toolResultsCount: toolResultCountByRequest.get(r.id as string) ?? 0,
 			toolCallsStripped: strippedByRequest.get(r.id as string) ?? 0,
-			tokensRemovedByContextEditing: tokensRemovedByRequest.get(r.id as string) ?? 0,
+			tokensRemovedByContextEditing:
+				(tokensRemovedByRequest.get(r.id as string) ?? 0) + Number(r.providerClearedInputTokens),
 			contextManagementEvent: cmeByRequest.get(r.id as string) ?? 0,
 			anthropicClearToolUses: Number(r.anthropicClearToolUses),
 			roleTokens: roleTokensByRequest.get(r.id as string) ?? { system: 0, user: 0, assistant: 0, tool: 0 }

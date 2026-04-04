@@ -196,9 +196,9 @@
 			</dd>
 		</div>
 		<div class="metric last">
-			<dt>Anthropic Tool Clears</dt>
+			<dt>Anthropic Clear Requests</dt>
 			<dd class:highlight-red={!statsLoading && (stats?.summary.requestsWithAnthropicToolClear ?? 0) > 0}>
-				{statsLoading ? '—' : formatNumber(stats?.summary.requestsWithAnthropicToolClear ?? 0)}
+				{statsLoading ? '—' : formatNumber(stats?.summary.requestsWithAnthropicToolClear ?? 0)} <span class="metric-sub">req</span>
 			</dd>
 		</div>
 	</dl>
@@ -323,7 +323,7 @@
 					</dd>
 				</div>
 				<div class="stat">
-					<dt>Anthropic Tool Clears</dt>
+					<dt>Anthropic Clear Requests</dt>
 					<dd class:highlight-red={stats.summary.requestsWithAnthropicToolClear > 0}>
 						{formatNumber(stats.summary.requestsWithAnthropicToolClear)} <span class="stat-sub">req</span>
 					</dd>
