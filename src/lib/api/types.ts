@@ -104,7 +104,8 @@ export interface ApiError {
 
 export interface ConversationStatPoint {
 	timestamp: string; // ISO datetime
-	tokensUsed: number; // input + output (no cache)
+	promptTokensSent: number; // estimated input tokens sent to the provider
+	tokensUsed: number; // input + output as reported by the provider
 	inputTokens: number;
 	outputTokens: number;
 	cacheReadTokens: number;
@@ -113,9 +114,8 @@ export interface ConversationStatPoint {
 	toolCallsCount: number; // classification = 'tool_use' messages
 	toolResultsCount: number; // classification = 'tool_result' messages
 	toolCallsStripped: number; // removed_tool_exchanges_delta from context_management_events
-	tokensRemovedByContextEditing: number; // runtime context removals plus provider-side cleared input tokens
+	contextTokensSaved: number; // context_runtime_estimated_input_tokens_saved from llm_requests
 	contextManagementEvent: number; // 1 if a context_management_event fired, else 0
-	anthropicClearToolUses: number; // 1 if Anthropic actually cleared tool uses for the request
 	roleTokens: {
 		system: number;
 		user: number;
@@ -127,8 +127,11 @@ export interface ConversationStatPoint {
 export interface ConversationStatSummary {
 	meanTokensPerRequest: number;
 	avgMessagesPerRequest: number;
+	totalPromptTokensSent: number;
+	totalProcessedTokens: number;
 	totalToolCalls: number;
 	totalToolCallsStripped: number;
+	totalContextTokensSaved: number;
 	minTokens: number;
 	maxTokens: number;
 	medianTokens: number;
@@ -137,7 +140,7 @@ export interface ConversationStatSummary {
 	totalCacheWriteTokens: number;
 	requestsWithCacheHits: number; // requests where cacheReadTokens > 0
 	requestsWithContextManagement: number; // requests that triggered a context management event
-	requestsWithAnthropicToolClear: number; // requests where Anthropic stripped tools server-side
+	requestsWithToolTrimming: number; // requests where tool call/result exchanges were trimmed
 }
 
 export interface ConversationStats {

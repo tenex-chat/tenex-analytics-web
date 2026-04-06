@@ -3,10 +3,10 @@
 	import LineChart from '$lib/components/LineChart.svelte';
 	import BarChart from '$lib/components/BarChart.svelte';
 	import { telemetry } from '$lib/stores/telemetry.js';
-	import { filters, filterParams } from '$lib/stores/filters.js';
-	import { formatNumber, formatCost, formatPercent } from '$lib/utils/format.js';
+	import { filterParams } from '$lib/stores/filters.js';
+	import { formatNumber, formatPercent } from '$lib/utils/format.js';
 
-	async function loadSummary() {
+	async function loadSummary(): Promise<void> {
 		const params: Record<string, string> = {};
 		// Parse all current filter params from the derived store string
 		new URLSearchParams($filterParams).forEach((value, key) => {
@@ -22,14 +22,12 @@
 
 	const summary = $derived($telemetry.summary);
 	const loading = $derived($telemetry.loading);
-	const error = $derived($telemetry.error);
-
 	// Token usage chart data
 	let tokenPoints: Array<Record<string, number | string>> = $state([]);
 	let tokenLoading = $state(true);
 	let tokenError: string | null = $state(null);
 
-	async function loadTokens() {
+	async function loadTokens(): Promise<void> {
 		tokenLoading = true;
 		tokenError = null;
 		try {
@@ -49,7 +47,7 @@
 	let cacheLoading = $state(true);
 	let cacheError: string | null = $state(null);
 
-	async function loadCache() {
+	async function loadCache(): Promise<void> {
 		cacheLoading = true;
 		cacheError = null;
 		try {
@@ -72,6 +70,31 @@
 		$filterParams;
 		loadCache();
 	});
+
+	// Context savings chart data
+	let contextSavingsPoints: Array<Record<string, number | string>> = $state([]);
+	let contextSavingsLoading = $state(true);
+	let contextSavingsError: string | null = $state(null);
+
+	async function loadContextSavings(): Promise<void> {
+		contextSavingsLoading = true;
+		contextSavingsError = null;
+		try {
+			const res = await fetch(`/api/context-savings?${$filterParams}`);
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			const data = await res.json();
+			contextSavingsPoints = data.points ?? [];
+		} catch (e) {
+			contextSavingsError = (e as Error).message;
+		} finally {
+			contextSavingsLoading = false;
+		}
+	}
+
+	$effect(() => {
+		$filterParams;
+		loadContextSavings();
+	});
 </script>
 
 <svelte:head>
@@ -86,11 +109,13 @@
 	</div>
 	<div class="metric">
 		<dt>Cache Hit Rate</dt>
-		<dd class="accent-green">{loading ? '—' : formatPercent(summary?.cacheEfficiencyPercent ?? 0)}</dd>
+		<dd class="accent-green">
+			{loading ? '—' : formatPercent(summary?.cacheEfficiencyPercent ?? 0)}
+		</dd>
 	</div>
 	<div class="metric">
-		<dt>Total Cost</dt>
-		<dd>{loading ? '—' : formatCost(summary?.totalCostUsd ?? 0)}</dd>
+		<dt>Cache Writes</dt>
+		<dd>{loading ? '—' : formatNumber(summary?.totalCacheWriteTokens ?? 0)}</dd>
 	</div>
 	<div class="metric last">
 		<dt>Requests</dt>
@@ -99,7 +124,7 @@
 </dl>
 
 <!-- Section: Token Usage -->
-<section class="chart-section" style="margin-top: 48px;">
+<section class="chart-section" style:margin-top="48px">
 	<h2 class="section-label">Token Usage</h2>
 	<Card title="Token Usage Over Time" loading={tokenLoading} error={tokenError}>
 		<LineChart
@@ -116,7 +141,7 @@
 </section>
 
 <!-- Section: Cache by Model -->
-<section class="chart-section" style="margin-top: 40px;">
+<section class="chart-section" style:margin-top="40px">
 	<h2 class="section-label">Cache by Model</h2>
 	<Card title="Cache Performance by Model" loading={cacheLoading} error={cacheError}>
 		<BarChart
@@ -125,6 +150,27 @@
 			xKey="label"
 			height={200}
 			horizontal={true}
+		/>
+	</Card>
+</section>
+
+<!-- Section: Context Savings -->
+<section class="chart-section" style:margin-top="40px">
+	<h2 class="section-label">Local Context Savings</h2>
+	<Card
+		title="Prompt Input Sent vs Saved vs Processed"
+		loading={contextSavingsLoading}
+		error={contextSavingsError}
+	>
+		<LineChart
+			data={contextSavingsPoints}
+			lines={[
+				{ key: 'sentTokens', label: 'Sent to Provider', color: '#ef4444' },
+				{ key: 'savedTokens', label: 'Saved Locally', color: '#f59e0b' },
+				{ key: 'processedTokens', label: 'Processed Input', color: '#22c55e' }
+			]}
+			xKey="date"
+			height={240}
 		/>
 	</Card>
 </section>
