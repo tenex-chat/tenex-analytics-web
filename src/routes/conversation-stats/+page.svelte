@@ -92,14 +92,20 @@
 	}
 
 	// Convert position-based data to use string keys for BarChart
-	const positionData = $derived(avgTokensPerRequestByPosition.map((p) => ({
-		pos: `#${p.position}`,
-		avgTokens: p.avgTokens
-	})));
+	const positionData = $derived(
+		avgTokensPerRequestByPosition.map((p) => ({
+			pos: `#${p.position}`,
+			avgTokens: p.avgTokens
+		}))
+	);
 
 	// Convert label-based data to use string keys for BarChart
-	const toolStrippingData = $derived(toolStripping.map((t) => ({ label: t.label, count: t.count })));
-	const contextPressureData = $derived(contextPressure.map((c) => ({ label: c.label, count: c.count })));
+	const toolStrippingData = $derived(
+		toolStripping.map((t) => ({ label: t.label, count: t.count }))
+	);
+	const contextPressureData = $derived(
+		contextPressure.map((c) => ({ label: c.label, count: c.count }))
+	);
 </script>
 
 <svelte:head><title>Conversation Stats — TENEX Analytics</title></svelte:head>
@@ -117,7 +123,10 @@
 		</div>
 		<div class="metric">
 			<dt>Avg Length</dt>
-			<dd>{loading ? '—' : summary.avgRequestsPerConversation.toFixed(1)} <span class="unit">reqs</span></dd>
+			<dd>
+				{loading ? '—' : summary.avgRequestsPerConversation.toFixed(1)}
+				<span class="unit">reqs</span>
+			</dd>
 		</div>
 		<div class="metric">
 			<dt>Avg Tokens / Conv</dt>
@@ -278,30 +287,114 @@
 </div>
 
 <style>
-	.page { display: flex; flex-direction: column; gap: 1.5rem; }
-	.page-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
-	.page-title { font-size: 1.5rem; font-weight: 700; color: var(--text); }
+	.page {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+	}
+	.page-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 1rem;
+	}
+	.page-title {
+		font-size: 1.5rem;
+		font-weight: 700;
+		color: var(--text);
+	}
 
-	.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-	@media (max-width: 768px) { .chart-grid { grid-template-columns: 1fr; } }
+	.chart-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 1.5rem;
+	}
+	@media (max-width: 768px) {
+		.chart-grid {
+			grid-template-columns: 1fr;
+		}
+	}
 
 	/* Metrics strip */
-	.metrics { display: flex; margin: 0; padding: 0; list-style: none; flex-wrap: wrap; gap: 0; }
-	.metric { flex: 1; min-width: 140px; padding: 0 24px; border-right: 1px solid var(--border); }
-	.metric:first-child { padding-left: 0; }
-	.metric.last { border-right: none; }
-	.metric dt { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 6px; }
-	.metric dd { font-size: 24px; font-weight: 600; color: var(--text); line-height: 1; margin: 0; }
-	.unit { font-size: 14px; font-weight: 400; color: var(--muted); }
+	.metrics {
+		display: flex;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		flex-wrap: wrap;
+		gap: 0;
+	}
+	.metric {
+		flex: 1;
+		min-width: 140px;
+		padding: 0 24px;
+		border-right: 1px solid var(--border);
+	}
+	.metric:first-child {
+		padding-left: 0;
+	}
+	.metric.last {
+		border-right: none;
+	}
+	.metric dt {
+		font-size: 11px;
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--muted);
+		margin-bottom: 6px;
+	}
+	.metric dd {
+		font-size: 24px;
+		font-weight: 600;
+		color: var(--text);
+		line-height: 1;
+		margin: 0;
+	}
+	.unit {
+		font-size: 14px;
+		font-weight: 400;
+		color: var(--muted);
+	}
 
 	/* Table */
-	.table-wrap { overflow-x: auto; }
-	.data-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
-	.data-table th { text-align: left; padding: 0.5rem 0.75rem; color: var(--muted); border-bottom: 1px solid var(--border); font-weight: 500; }
-	.data-table td { padding: 0.5rem 0.75rem; color: var(--text); border-bottom: 1px solid var(--border); }
-	.data-table tr:last-child td { border-bottom: none; }
-	.num { text-align: right; }
-	.bold { font-weight: 600; }
-	.mono { font-family: monospace; font-size: 0.75rem; }
-	.empty { color: var(--muted); font-size: 0.875rem; padding: 1rem 0; }
+	.table-wrap {
+		overflow-x: auto;
+	}
+	.data-table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 0.8125rem;
+	}
+	.data-table th {
+		text-align: left;
+		padding: 0.5rem 0.75rem;
+		color: var(--muted);
+		border-bottom: 1px solid var(--border);
+		font-weight: 500;
+	}
+	.data-table td {
+		padding: 0.5rem 0.75rem;
+		color: var(--text);
+		border-bottom: 1px solid var(--border);
+	}
+	.data-table tr:last-child td {
+		border-bottom: none;
+	}
+	.num {
+		text-align: right;
+	}
+	.bold {
+		font-weight: 600;
+	}
+	.mono {
+		font-family: monospace;
+		font-size: 0.75rem;
+	}
+	.empty {
+		color: var(--muted);
+		font-size: 0.875rem;
+		padding: 1rem 0;
+	}
 </style>

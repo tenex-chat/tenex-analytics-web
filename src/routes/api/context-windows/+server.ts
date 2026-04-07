@@ -13,7 +13,9 @@ import {
 function hasTable(name: string): boolean {
 	try {
 		const db = getDb();
-		const row = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`).get(name);
+		const row = db
+			.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`)
+			.get(name);
 		return row !== undefined;
 	} catch {
 		return false;
@@ -41,7 +43,10 @@ export const GET: RequestHandler = ({ url }) => {
 				: 'WHERE ' + entityConditions.join(' AND ')
 			: clause;
 
-		const events = (db.prepare(`
+		const events = (
+			db
+				.prepare(
+					`
 			SELECT
 				created_at_ms,
 				COALESCE(agent_slug, 'unknown') AS agentSlug,
@@ -54,7 +59,10 @@ export const GET: RequestHandler = ({ url }) => {
 			${clause_}
 			ORDER BY created_at_ms DESC
 			LIMIT 500
-		`).all(params) as Record<string, unknown>[]).map((r) => ({
+		`
+				)
+				.all(params) as Record<string, unknown>[]
+		).map((r) => ({
 			timestamp: new Date(Number(r.created_at_ms)).toISOString(),
 			agentSlug: r.agentSlug as string,
 			model: r.model as string,
@@ -64,7 +72,10 @@ export const GET: RequestHandler = ({ url }) => {
 			strategy: r.strategy as string
 		}));
 
-		const byAgent = (db.prepare(`
+		const byAgent = (
+			db
+				.prepare(
+					`
 			SELECT
 				COALESCE(agent_slug, 'unknown') AS agentSlug,
 				ROUND(AVG(utilization_percent), 2) AS avgUtilization,
@@ -74,7 +85,10 @@ export const GET: RequestHandler = ({ url }) => {
 			${clause_}
 			GROUP BY agent_slug
 			ORDER BY maxUtilization DESC
-		`).all(params) as Record<string, unknown>[]).map((r) => ({
+		`
+				)
+				.all(params) as Record<string, unknown>[]
+		).map((r) => ({
 			agentSlug: r.agentSlug as string,
 			avgUtilization: Number(r.avgUtilization),
 			maxUtilization: Number(r.maxUtilization),

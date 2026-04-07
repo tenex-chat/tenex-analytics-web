@@ -70,13 +70,19 @@ export const GET: RequestHandler = ({ url }) => {
 	const params = { ...dateParams, ...entityParams };
 	const db = getDb();
 
-	const extraConditions = ["status = 'success'", 'conversation_id IS NOT NULL', ...entityConditions];
+	const extraConditions = [
+		"status = 'success'",
+		'conversation_id IS NOT NULL',
+		...entityConditions
+	];
 	const whereClause = clause
 		? clause + ' AND ' + extraConditions.join(' AND ')
 		: 'WHERE ' + extraConditions.join(' AND ');
 
 	// ── Summary ──────────────────────────────────────────────────────────────
-	const summaryRow = db.prepare(`
+	const summaryRow = db
+		.prepare(
+			`
 		SELECT
 			COUNT(DISTINCT conversation_id)                             AS totalConversations,
 			CAST(COUNT(*) AS REAL) / COUNT(DISTINCT conversation_id)   AS avgRequests,
@@ -84,10 +90,14 @@ export const GET: RequestHandler = ({ url }) => {
 			CAST(SUM(cost_usd) AS REAL) / COUNT(DISTINCT conversation_id)     AS avgCost
 		FROM llm_requests
 		${whereClause}
-	`).get(params) as Record<string, number>;
+	`
+		)
+		.get(params) as Record<string, number>;
 
 	// Average duration: (MAX - MIN started_at_ms) per conversation, then average
-	const durationRow = db.prepare(`
+	const durationRow = db
+		.prepare(
+			`
 		SELECT AVG(duration_ms) / 1000.0 AS avgDurationSeconds
 		FROM (
 			SELECT conversation_id, MAX(started_at_ms) - MIN(started_at_ms) AS duration_ms
@@ -95,7 +105,9 @@ export const GET: RequestHandler = ({ url }) => {
 			${whereClause}
 			GROUP BY conversation_id
 		)
-	`).get(params) as Record<string, number>;
+	`
+		)
+		.get(params) as Record<string, number>;
 
 	const summary = {
 		totalConversations: Number(summaryRow.totalConversations) || 0,
@@ -106,14 +118,24 @@ export const GET: RequestHandler = ({ url }) => {
 	};
 
 	// ── Length distribution ──────────────────────────────��────────────────────
-	const convLengths = db.prepare(`
+	const convLengths = db
+		.prepare(
+			`
 		SELECT conversation_id, COUNT(*) AS req_count
 		FROM llm_requests
 		${whereClause}
 		GROUP BY conversation_id
-	`).all(params) as Array<{ req_count: number }>;
+	`
+		)
+		.all(params) as Array<{ req_count: number }>;
 
-	const lengthBuckets: Record<string, number> = { '1-2': 0, '3-5': 0, '6-10': 0, '11-20': 0, '20+': 0 };
+	const lengthBuckets: Record<string, number> = {
+		'1-2': 0,
+		'3-5': 0,
+		'6-10': 0,
+		'11-20': 0,
+		'20+': 0
+	};
 	for (const row of convLengths) {
 		const n = Number(row.req_count);
 		if (n <= 2) lengthBuckets['1-2']++;
@@ -122,17 +144,30 @@ export const GET: RequestHandler = ({ url }) => {
 		else if (n <= 20) lengthBuckets['11-20']++;
 		else lengthBuckets['20+']++;
 	}
-	const lengthDistribution = Object.entries(lengthBuckets).map(([bucket, count]) => ({ bucket, count }));
+	const lengthDistribution = Object.entries(lengthBuckets).map(([bucket, count]) => ({
+		bucket,
+		count
+	}));
 
 	// ── Token distribution ────────────────────────────────────────────────────
-	const convTokens = db.prepare(`
+	const convTokens = db
+		.prepare(
+			`
 		SELECT conversation_id, SUM(total_tokens) AS total_tokens
 		FROM llm_requests
 		${whereClause}
 		GROUP BY conversation_id
-	`).all(params) as Array<{ total_tokens: number }>;
+	`
+		)
+		.all(params) as Array<{ total_tokens: number }>;
 
-	const tokenBuckets: Record<string, number> = { '0-10k': 0, '10k-50k': 0, '50k-200k': 0, '200k-500k': 0, '500k+': 0 };
+	const tokenBuckets: Record<string, number> = {
+		'0-10k': 0,
+		'10k-50k': 0,
+		'50k-200k': 0,
+		'200k-500k': 0,
+		'500k+': 0
+	};
 	for (const row of convTokens) {
 		const t = Number(row.total_tokens);
 		if (t < 10000) tokenBuckets['0-10k']++;
@@ -141,28 +176,45 @@ export const GET: RequestHandler = ({ url }) => {
 		else if (t < 500000) tokenBuckets['200k-500k']++;
 		else tokenBuckets['500k+']++;
 	}
-	const tokenDistribution = Object.entries(tokenBuckets).map(([bucket, count]) => ({ bucket, count }));
+	const tokenDistribution = Object.entries(tokenBuckets).map(([bucket, count]) => ({
+		bucket,
+		count
+	}));
 
 	// ── Cost distribution ─────────────────────────────────────────────────────
-	const convCosts = db.prepare(`
+	const convCosts = db
+		.prepare(
+			`
 		SELECT conversation_id, SUM(cost_usd) AS total_cost
 		FROM llm_requests
 		${whereClause}
 		GROUP BY conversation_id
-	`).all(params) as Array<{ total_cost: number }>;
+	`
+		)
+		.all(params) as Array<{ total_cost: number }>;
 
-	const costBuckets: Record<string, number> = { '$0-0.10': 0, '$0.10-0.50': 0, '$0.50-2': 0, '$2+': 0 };
+	const costBuckets: Record<string, number> = {
+		'$0-0.10': 0,
+		'$0.10-0.50': 0,
+		'$0.50-2': 0,
+		'$2+': 0
+	};
 	for (const row of convCosts) {
 		const c = Number(row.total_cost);
-		if (c < 0.10) costBuckets['$0-0.10']++;
-		else if (c < 0.50) costBuckets['$0.10-0.50']++;
+		if (c < 0.1) costBuckets['$0-0.10']++;
+		else if (c < 0.5) costBuckets['$0.10-0.50']++;
 		else if (c < 2.0) costBuckets['$0.50-2']++;
 		else costBuckets['$2+']++;
 	}
-	const costDistribution = Object.entries(costBuckets).map(([bucket, count]) => ({ bucket, count }));
+	const costDistribution = Object.entries(costBuckets).map(([bucket, count]) => ({
+		bucket,
+		count
+	}));
 
 	// ── Daily new conversations ───────────────────────────────────────────────
-	const dailyRowsFixed = db.prepare(`
+	const dailyRowsFixed = db
+		.prepare(
+			`
 		SELECT date, COUNT(*) AS count
 		FROM (
 			SELECT conversation_id, date(MIN(started_at_ms)/1000, 'unixepoch') AS date
@@ -172,7 +224,9 @@ export const GET: RequestHandler = ({ url }) => {
 		)
 		GROUP BY date
 		ORDER BY date ASC
-	`).all(params) as Array<{ date: string; count: number }>;
+	`
+		)
+		.all(params) as Array<{ date: string; count: number }>;
 
 	const dailyNewConversations = dailyRowsFixed.map((r) => ({
 		date: r.date as string,
@@ -180,7 +234,9 @@ export const GET: RequestHandler = ({ url }) => {
 	}));
 
 	// ── Weekly avg requests per conversation ──────────────────────────────────
-	const weeklyRows = db.prepare(`
+	const weeklyRows = db
+		.prepare(
+			`
 		SELECT week, AVG(req_count) AS avgRequests
 		FROM (
 			SELECT
@@ -193,7 +249,9 @@ export const GET: RequestHandler = ({ url }) => {
 		)
 		GROUP BY week
 		ORDER BY week ASC
-	`).all(params) as Array<{ week: string; avgRequests: number }>;
+	`
+		)
+		.all(params) as Array<{ week: string; avgRequests: number }>;
 
 	const weeklyAvgRequests = weeklyRows.map((r) => ({
 		week: r.week as string,
@@ -201,7 +259,9 @@ export const GET: RequestHandler = ({ url }) => {
 	}));
 
 	// ── Token growth (first vs last request tokens per conversation, by day) ──
-	const tokenGrowthRows = db.prepare(`
+	const tokenGrowthRows = db
+		.prepare(
+			`
 		SELECT
 			date(conv_start/1000, 'unixepoch') AS date,
 			AVG(first_tokens) AS avgFirstTokens,
@@ -216,7 +276,9 @@ export const GET: RequestHandler = ({ url }) => {
 			${whereClause}
 		)
 		GROUP BY conversation_id, conv_start
-	`).all(params) as Array<{ date: string; avgFirstTokens: number; avgLastTokens: number }>;
+	`
+		)
+		.all(params) as Array<{ date: string; avgFirstTokens: number; avgLastTokens: number }>;
 
 	// Aggregate by date
 	const growthByDate = new Map<string, { sumFirst: number; sumLast: number; count: number }>();
@@ -237,7 +299,9 @@ export const GET: RequestHandler = ({ url }) => {
 		}));
 
 	// ── Tool stripping ────────────────────────────────────────────────────────
-	const toolStrippingRow = db.prepare(`
+	const toolStrippingRow = db
+		.prepare(
+			`
 		SELECT
 			SUM(CASE WHEN has_strip = 1 THEN 1 ELSE 0 END) AS withStrip,
 			SUM(CASE WHEN has_strip = 0 THEN 1 ELSE 0 END) AS withoutStrip
@@ -247,7 +311,9 @@ export const GET: RequestHandler = ({ url }) => {
 			${whereClause}
 			GROUP BY conversation_id
 		)
-	`).get(params) as Record<string, number>;
+	`
+		)
+		.get(params) as Record<string, number>;
 
 	const toolStripping = [
 		{ label: 'With Tool Stripping', count: Number(toolStrippingRow?.withStrip) || 0 },
@@ -256,7 +322,9 @@ export const GET: RequestHandler = ({ url }) => {
 
 	// ── Context pressure ──────────────────────────────────────────────────────
 	// Join context_management_events to llm_requests via request_id to apply same filters
-	const contextPressureRow = db.prepare(`
+	const contextPressureRow = db
+		.prepare(
+			`
 		SELECT
 			COUNT(DISTINCT CASE WHEN cme.request_id IS NOT NULL THEN r.conversation_id END) AS withEvents,
 			COUNT(DISTINCT CASE WHEN cme.request_id IS NULL     THEN r.conversation_id END) AS withoutEvents
@@ -264,7 +332,9 @@ export const GET: RequestHandler = ({ url }) => {
 		LEFT JOIN (SELECT DISTINCT request_id FROM context_management_events) cme
 			ON cme.request_id = r.request_id
 		${whereClause}
-	`).get(params) as Record<string, number>;
+	`
+		)
+		.get(params) as Record<string, number>;
 
 	const contextPressure = [
 		{ label: 'Had Context Events', count: Number(contextPressureRow?.withEvents) || 0 },
@@ -272,7 +342,9 @@ export const GET: RequestHandler = ({ url }) => {
 	];
 
 	// ── Top expensive conversations ───────────────────────────────────────────
-	const topExpensiveRows = db.prepare(`
+	const topExpensiveRows = db
+		.prepare(
+			`
 		SELECT
 			conversation_id                           AS conversationId,
 			MAX(agent_slug)                           AS agentSlug,
@@ -285,7 +357,9 @@ export const GET: RequestHandler = ({ url }) => {
 		GROUP BY conversation_id
 		ORDER BY totalTokens DESC
 		LIMIT 10
-	`).all(params) as Array<Record<string, string | number>>;
+	`
+		)
+		.all(params) as Array<Record<string, string | number>>;
 
 	const topExpensive = topExpensiveRows.map((r) => ({
 		conversationId: String(r.conversationId ?? ''),
@@ -298,7 +372,9 @@ export const GET: RequestHandler = ({ url }) => {
 
 	// ── Avg tokens per request by position ───────────────────────────────────
 	// Use a subquery with ROW_NUMBER to get position within conversation
-	const positionRows = db.prepare(`
+	const positionRows = db
+		.prepare(
+			`
 		SELECT position, AVG(total_tokens) AS avgTokens
 		FROM (
 			SELECT
@@ -310,7 +386,9 @@ export const GET: RequestHandler = ({ url }) => {
 		WHERE position <= 10
 		GROUP BY position
 		ORDER BY position ASC
-	`).all(params) as Array<{ position: number; avgTokens: number }>;
+	`
+		)
+		.all(params) as Array<{ position: number; avgTokens: number }>;
 
 	const avgTokensPerRequestByPosition = positionRows.map((r) => ({
 		position: Number(r.position),
@@ -319,7 +397,9 @@ export const GET: RequestHandler = ({ url }) => {
 
 	// ── Token breakdown by position (stacked by message classification) ──────
 	// Joins llm_request_messages to get per-classification token averages
-	const tokenBreakdownRows = db.prepare(`
+	const tokenBreakdownRows = db
+		.prepare(
+			`
 		SELECT
 			position,
 			AVG(system_tok)      AS avgSystem,
@@ -344,7 +424,9 @@ export const GET: RequestHandler = ({ url }) => {
 		WHERE position <= 15
 		GROUP BY position
 		ORDER BY position ASC
-	`).all(params) as Array<{
+	`
+		)
+		.all(params) as Array<{
 		position: number;
 		avgSystem: number;
 		avgUser: number;
@@ -364,7 +446,9 @@ export const GET: RequestHandler = ({ url }) => {
 
 	// ── Context savings by position ───────────────────────────────────────────
 	// Shows avg actual tokens sent vs tokens saved by context editing
-	const savingsRows = db.prepare(`
+	const savingsRows = db
+		.prepare(
+			`
 		SELECT
 			position,
 			AVG(actual_tokens) AS avgActualTokens,
@@ -382,7 +466,9 @@ export const GET: RequestHandler = ({ url }) => {
 		WHERE position <= 15
 		GROUP BY position
 		ORDER BY position ASC
-	`).all(params) as Array<{ position: number; avgActualTokens: number; avgSavedTokens: number }>;
+	`
+		)
+		.all(params) as Array<{ position: number; avgActualTokens: number; avgSavedTokens: number }>;
 
 	const contextSavingsByPosition = savingsRows.map((r) => ({
 		pos: `#${r.position}`,

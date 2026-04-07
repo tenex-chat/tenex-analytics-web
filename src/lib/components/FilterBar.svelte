@@ -11,7 +11,13 @@
 		apiKeyIdentities: string[];
 	}
 
-	let options: FilterOptions = $state({ projects: [], agents: [], providers: [], models: [], apiKeyIdentities: [] });
+	let options: FilterOptions = $state({
+		projects: [],
+		agents: [],
+		providers: [],
+		models: [],
+		apiKeyIdentities: []
+	});
 
 	// Local bound values for custom date pickers
 	let fromVal = $state(formatDate($filters.from));
@@ -141,8 +147,9 @@
 
 		{#if activePreset === 'custom'}
 			<div class="filter-group">
-				<label class="filter-label">From</label>
+				<label class="filter-label" for="date-from">From</label>
 				<input
+					id="date-from"
 					type="date"
 					class="filter-input"
 					value={fromVal}
@@ -151,20 +158,20 @@
 			</div>
 
 			<div class="filter-group">
-				<label class="filter-label">To</label>
-				<input
-					type="date"
-					class="filter-input"
-					value={toVal}
-					onchange={applyTo}
-				/>
+				<label class="filter-label" for="date-to">To</label>
+				<input id="date-to" type="date" class="filter-input" value={toVal} onchange={applyTo} />
 			</div>
 		{/if}
 
 		{#if options.projects.length > 0}
 			<div class="filter-group">
-				<label class="filter-label">Project</label>
-				<select class="filter-select" value={projectVal} onchange={applyProject}>
+				<label class="filter-label" for="project-filter">Project</label>
+				<select
+					id="project-filter"
+					class="filter-select"
+					value={projectVal}
+					onchange={applyProject}
+				>
 					<option value="">All</option>
 					{#each options.projects as p}
 						<option value={p}>{p}</option>
@@ -175,8 +182,8 @@
 
 		{#if options.agents.length > 0}
 			<div class="filter-group">
-				<label class="filter-label">Agent</label>
-				<select class="filter-select" value={agentVal} onchange={applyAgent}>
+				<label class="filter-label" for="agent-filter">Agent</label>
+				<select id="agent-filter" class="filter-select" value={agentVal} onchange={applyAgent}>
 					<option value="">All</option>
 					{#each options.agents as a}
 						<option value={a}>{a}</option>
@@ -187,8 +194,8 @@
 
 		{#if options.models.length > 0}
 			<div class="filter-group">
-				<label class="filter-label">Model</label>
-				<select class="filter-select" value={modelVal} onchange={applyModel}>
+				<label class="filter-label" for="model-filter">Model</label>
+				<select id="model-filter" class="filter-select" value={modelVal} onchange={applyModel}>
 					<option value="">All</option>
 					{#each options.models as m}
 						<option value={m}>{m}</option>
@@ -199,8 +206,8 @@
 
 		{#if options.apiKeyIdentities.length > 0}
 			<div class="filter-group">
-				<label class="filter-label">API Key</label>
-				<select class="filter-select" value={apiKeyVal} onchange={applyApiKey}>
+				<label class="filter-label" for="apikey-filter">API Key</label>
+				<select id="apikey-filter" class="filter-select" value={apiKeyVal} onchange={applyApiKey}>
 					<option value="">All</option>
 					{#each options.apiKeyIdentities as k}
 						<option value={k}>{k}</option>
@@ -259,7 +266,9 @@
 		padding: 0 0.75rem;
 		cursor: pointer;
 		margin-left: -1px;
-		transition: color 0.1s, background 0.1s;
+		transition:
+			color 0.1s,
+			background 0.1s;
 	}
 
 	.preset-btn:first-child {

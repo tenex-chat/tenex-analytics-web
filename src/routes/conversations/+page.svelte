@@ -59,14 +59,17 @@
 		}
 	});
 
-	const sorted = $derived([...conversations].sort((a, b) => {
-		const av = a[sortCol];
-		const bv = b[sortCol];
-		const cmp = typeof av === 'number' && typeof bv === 'number'
-			? av - bv
-			: String(av).localeCompare(String(bv));
-		return sortDir === 'asc' ? cmp : -cmp;
-	}));
+	const sorted = $derived(
+		[...conversations].sort((a, b) => {
+			const av = a[sortCol];
+			const bv = b[sortCol];
+			const cmp =
+				typeof av === 'number' && typeof bv === 'number'
+					? av - bv
+					: String(av).localeCompare(String(bv));
+			return sortDir === 'asc' ? cmp : -cmp;
+		})
+	);
 
 	function setSort(col: SortCol) {
 		if (sortCol === col) {
@@ -97,7 +100,14 @@
 	type WeeklyItem = { week: string; avgRequests: number };
 	type GrowthItem = { date: string; avgFirstTokens: number; avgLastTokens: number };
 	type PositionItem = { position: number; avgTokens: number };
-	type BreakdownItem = { pos: string; system: number; user: number; assistant: number; toolCall: number; toolResult: number };
+	type BreakdownItem = {
+		pos: string;
+		system: number;
+		user: number;
+		assistant: number;
+		toolCall: number;
+		toolResult: number;
+	};
 	type SavingsItem = { pos: string; actualTokens: number; savedTokens: number };
 	type ExpensiveItem = {
 		conversationId: string;
@@ -165,13 +175,19 @@
 		return `${m}m ${s}s`;
 	}
 
-	const positionData = $derived(avgTokensPerRequestByPosition.map((p) => ({
-		pos: `#${p.position}`,
-		avgTokens: p.avgTokens
-	})));
+	const positionData = $derived(
+		avgTokensPerRequestByPosition.map((p) => ({
+			pos: `#${p.position}`,
+			avgTokens: p.avgTokens
+		}))
+	);
 
-	const toolStrippingData = $derived(toolStripping.map((t) => ({ label: t.label, count: t.count })));
-	const contextPressureData = $derived(contextPressure.map((c) => ({ label: c.label, count: c.count })));
+	const _toolStrippingData = $derived(
+		toolStripping.map((t) => ({ label: t.label, count: t.count }))
+	);
+	const contextPressureData = $derived(
+		contextPressure.map((c) => ({ label: c.label, count: c.count }))
+	);
 </script>
 
 <svelte:head><title>Conversations — TENEX Analytics</title></svelte:head>
@@ -187,7 +203,10 @@
 		</div>
 		<div class="metric">
 			<dt>Avg Length</dt>
-			<dd>{statsLoading ? '—' : summary.avgRequestsPerConversation.toFixed(1)} <span class="unit">reqs</span></dd>
+			<dd>
+				{statsLoading ? '—' : summary.avgRequestsPerConversation.toFixed(1)}
+				<span class="unit">reqs</span>
+			</dd>
 		</div>
 		<div class="metric">
 			<dt>Avg Tokens / Conv</dt>
@@ -292,11 +311,11 @@
 		<BarChart
 			data={tokenBreakdownByPosition}
 			bars={[
-				{ key: 'system',     label: 'System',       color: SERIES_COLORS[0] },
-				{ key: 'assistant',  label: 'Assistant',    color: SERIES_COLORS[2] },
-				{ key: 'toolCall',   label: 'Tool Defs',    color: SERIES_COLORS[3] },
+				{ key: 'system', label: 'System', color: SERIES_COLORS[0] },
+				{ key: 'assistant', label: 'Assistant', color: SERIES_COLORS[2] },
+				{ key: 'toolCall', label: 'Tool Defs', color: SERIES_COLORS[3] },
 				{ key: 'toolResult', label: 'Tool Outputs', color: SERIES_COLORS[4] },
-				{ key: 'user',       label: 'User',         color: SERIES_COLORS[1] }
+				{ key: 'user', label: 'User', color: SERIES_COLORS[1] }
 			]}
 			xKey="pos"
 			height={300}
@@ -304,12 +323,16 @@
 		/>
 	</Card>
 
-	<Card title="Context Editing Savings by Request Position" loading={statsLoading} error={statsError}>
+	<Card
+		title="Context Editing Savings by Request Position"
+		loading={statsLoading}
+		error={statsError}
+	>
 		<BarChart
 			data={contextSavingsByPosition}
 			bars={[
-				{ key: 'actualTokens', label: 'Tokens Sent',  color: SERIES_COLORS[0] },
-				{ key: 'savedTokens',  label: 'Tokens Saved', color: SERIES_COLORS[1] }
+				{ key: 'actualTokens', label: 'Tokens Sent', color: SERIES_COLORS[0] },
+				{ key: 'savedTokens', label: 'Tokens Saved', color: SERIES_COLORS[1] }
 			]}
 			xKey="pos"
 			height={300}
@@ -363,35 +386,76 @@
 				<table class="data-table">
 					<thead>
 						<tr>
-							<th onclick={() => setSort('conversationId')} class:active={sortCol === 'conversationId'}>
-								Conversation ID{#if sortCol === 'conversationId'}<span class="arrow">{sortDir === 'asc' ? ' ↑' : ' ↓'}</span>{/if}
+							<th
+								onclick={() => setSort('conversationId')}
+								class:active={sortCol === 'conversationId'}
+							>
+								Conversation ID{#if sortCol === 'conversationId'}<span class="arrow"
+										>{sortDir === 'asc' ? ' ↑' : ' ↓'}</span
+									>{/if}
 							</th>
 							<th onclick={() => setSort('agentSlug')} class:active={sortCol === 'agentSlug'}>
-								Agent{#if sortCol === 'agentSlug'}<span class="arrow">{sortDir === 'asc' ? ' ↑' : ' ↓'}</span>{/if}
+								Agent{#if sortCol === 'agentSlug'}<span class="arrow"
+										>{sortDir === 'asc' ? ' ↑' : ' ↓'}</span
+									>{/if}
 							</th>
 							<th onclick={() => setSort('projectId')} class:active={sortCol === 'projectId'}>
-								Project{#if sortCol === 'projectId'}<span class="arrow">{sortDir === 'asc' ? ' ↑' : ' ↓'}</span>{/if}
+								Project{#if sortCol === 'projectId'}<span class="arrow"
+										>{sortDir === 'asc' ? ' ↑' : ' ↓'}</span
+									>{/if}
 							</th>
-							<th class="num" onclick={() => setSort('totalTokens')} class:active={sortCol === 'totalTokens'}>
-								Tokens{#if sortCol === 'totalTokens'}<span class="arrow">{sortDir === 'asc' ? ' ↑' : ' ↓'}</span>{/if}
+							<th
+								class="num"
+								onclick={() => setSort('totalTokens')}
+								class:active={sortCol === 'totalTokens'}
+							>
+								Tokens{#if sortCol === 'totalTokens'}<span class="arrow"
+										>{sortDir === 'asc' ? ' ↑' : ' ↓'}</span
+									>{/if}
 							</th>
-							<th class="num" onclick={() => setSort('totalCost')} class:active={sortCol === 'totalCost'}>
-								Cost{#if sortCol === 'totalCost'}<span class="arrow">{sortDir === 'asc' ? ' ↑' : ' ↓'}</span>{/if}
+							<th
+								class="num"
+								onclick={() => setSort('totalCost')}
+								class:active={sortCol === 'totalCost'}
+							>
+								Cost{#if sortCol === 'totalCost'}<span class="arrow"
+										>{sortDir === 'asc' ? ' ↑' : ' ↓'}</span
+									>{/if}
 							</th>
-							<th class="num" onclick={() => setSort('requestCount')} class:active={sortCol === 'requestCount'}>
-								Requests{#if sortCol === 'requestCount'}<span class="arrow">{sortDir === 'asc' ? ' ↑' : ' ↓'}</span>{/if}
+							<th
+								class="num"
+								onclick={() => setSort('requestCount')}
+								class:active={sortCol === 'requestCount'}
+							>
+								Requests{#if sortCol === 'requestCount'}<span class="arrow"
+										>{sortDir === 'asc' ? ' ↑' : ' ↓'}</span
+									>{/if}
 							</th>
-							<th class="num" onclick={() => setSort('cacheEfficiency')} class:active={sortCol === 'cacheEfficiency'}>
-								Cache %{#if sortCol === 'cacheEfficiency'}<span class="arrow">{sortDir === 'asc' ? ' ↑' : ' ↓'}</span>{/if}
+							<th
+								class="num"
+								onclick={() => setSort('cacheEfficiency')}
+								class:active={sortCol === 'cacheEfficiency'}
+							>
+								Cache %{#if sortCol === 'cacheEfficiency'}<span class="arrow"
+										>{sortDir === 'asc' ? ' ↑' : ' ↓'}</span
+									>{/if}
 							</th>
-							<th onclick={() => setSort('lastTimestamp')} class:active={sortCol === 'lastTimestamp'}>
-								Last Seen{#if sortCol === 'lastTimestamp'}<span class="arrow">{sortDir === 'asc' ? ' ↑' : ' ↓'}</span>{/if}
+							<th
+								onclick={() => setSort('lastTimestamp')}
+								class:active={sortCol === 'lastTimestamp'}
+							>
+								Last Seen{#if sortCol === 'lastTimestamp'}<span class="arrow"
+										>{sortDir === 'asc' ? ' ↑' : ' ↓'}</span
+									>{/if}
 							</th>
 						</tr>
 					</thead>
 					<tbody>
 						{#each sorted as c}
-							<tr class="clickable" onclick={() => goto(`/conversations/${encodeURIComponent(c.conversationId)}`)}>
+							<tr
+								class="clickable"
+								onclick={() => goto(`/conversations/${encodeURIComponent(c.conversationId)}`)}
+							>
 								<td class="mono">{c.conversationId.slice(0, 4)}</td>
 								<td>{c.agentSlug}</td>
 								<td class="dim">{truncate(c.projectId, 20)}</td>
@@ -410,41 +474,151 @@
 </div>
 
 <style>
-	.page { display: flex; flex-direction: column; gap: 1.5rem; }
-	.page-title { font-size: 1.5rem; font-weight: 700; color: var(--text); }
+	.page {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+	}
+	.page-title {
+		font-size: 1.5rem;
+		font-weight: 700;
+		color: var(--text);
+	}
 
-	.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-	@media (max-width: 768px) { .chart-grid { grid-template-columns: 1fr; } }
+	.chart-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 1.5rem;
+	}
+	@media (max-width: 768px) {
+		.chart-grid {
+			grid-template-columns: 1fr;
+		}
+	}
 
 	/* Metrics strip */
-	.metrics { display: flex; margin: 0; padding: 0; list-style: none; flex-wrap: wrap; gap: 0; }
-	.metric { flex: 1; min-width: 140px; padding: 0 24px; border-right: 1px solid var(--border); }
-	.metric:first-child { padding-left: 0; }
-	.metric.last { border-right: none; }
-	.metric dt { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 6px; }
-	.metric dd { font-size: 24px; font-weight: 600; color: var(--text); line-height: 1; margin: 0; }
-	.unit { font-size: 14px; font-weight: 400; color: var(--muted); }
+	.metrics {
+		display: flex;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		flex-wrap: wrap;
+		gap: 0;
+	}
+	.metric {
+		flex: 1;
+		min-width: 140px;
+		padding: 0 24px;
+		border-right: 1px solid var(--border);
+	}
+	.metric:first-child {
+		padding-left: 0;
+	}
+	.metric.last {
+		border-right: none;
+	}
+	.metric dt {
+		font-size: 11px;
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--muted);
+		margin-bottom: 6px;
+	}
+	.metric dd {
+		font-size: 24px;
+		font-weight: 600;
+		color: var(--text);
+		line-height: 1;
+		margin: 0;
+	}
+	.unit {
+		font-size: 14px;
+		font-weight: 400;
+		color: var(--muted);
+	}
 
 	/* Section divider */
-	.section-divider { display: flex; align-items: center; gap: 1rem; }
+	.section-divider {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+	}
 	.section-divider::before,
-	.section-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-	.section-label { font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); white-space: nowrap; }
+	.section-divider::after {
+		content: '';
+		flex: 1;
+		height: 1px;
+		background: var(--border);
+	}
+	.section-label {
+		font-size: 0.75rem;
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--dim);
+		white-space: nowrap;
+	}
 
 	/* Table */
-	.table-wrap { overflow-x: auto; }
-	.data-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
-	.data-table th { text-align: left; padding: 0.5rem 0.75rem; color: var(--muted); border-bottom: 1px solid var(--border); font-weight: 500; white-space: nowrap; cursor: pointer; user-select: none; }
-	.data-table th:hover { color: var(--text); }
-	.data-table th.active { color: var(--text); }
-	.data-table td { padding: 0.5rem 0.75rem; color: var(--text); border-bottom: 1px solid var(--border); }
-	.data-table tr:last-child td { border-bottom: none; }
-	.clickable { cursor: pointer; }
-	.clickable:hover td { background: var(--surface); }
-	.num { text-align: right; }
-	.bold { font-weight: 600; }
-	.mono { font-family: monospace; font-size: 0.75rem; }
-	.dim { color: var(--muted); }
-	.empty { color: var(--muted); font-size: 0.875rem; padding: 1rem 0; }
-	.arrow { color: var(--text); font-size: 0.75rem; }
+	.table-wrap {
+		overflow-x: auto;
+	}
+	.data-table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 0.8125rem;
+	}
+	.data-table th {
+		text-align: left;
+		padding: 0.5rem 0.75rem;
+		color: var(--muted);
+		border-bottom: 1px solid var(--border);
+		font-weight: 500;
+		white-space: nowrap;
+		cursor: pointer;
+		user-select: none;
+	}
+	.data-table th:hover {
+		color: var(--text);
+	}
+	.data-table th.active {
+		color: var(--text);
+	}
+	.data-table td {
+		padding: 0.5rem 0.75rem;
+		color: var(--text);
+		border-bottom: 1px solid var(--border);
+	}
+	.data-table tr:last-child td {
+		border-bottom: none;
+	}
+	.clickable {
+		cursor: pointer;
+	}
+	.clickable:hover td {
+		background: var(--surface);
+	}
+	.num {
+		text-align: right;
+	}
+	.bold {
+		font-weight: 600;
+	}
+	.mono {
+		font-family: monospace;
+		font-size: 0.75rem;
+	}
+	.dim {
+		color: var(--muted);
+	}
+	.empty {
+		color: var(--muted);
+		font-size: 0.875rem;
+		padding: 1rem 0;
+	}
+	.arrow {
+		color: var(--text);
+		font-size: 0.75rem;
+	}
 </style>

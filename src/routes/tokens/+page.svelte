@@ -6,7 +6,15 @@
 	import { CHART_COLORS } from '$lib/utils/colors.js';
 
 	type Granularity = 'hour' | 'day' | 'week';
-	type TokenPoint = { date: string; inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number; totalTokens: number; requests: number };
+	type TokenPoint = {
+		date: string;
+		inputTokens: number;
+		outputTokens: number;
+		cacheReadTokens: number;
+		cacheWriteTokens: number;
+		totalTokens: number;
+		requests: number;
+	};
 
 	let points: TokenPoint[] = $state([]);
 	let loading = $state(true);
@@ -39,7 +47,9 @@
 	const totalOutput = $derived(points.reduce((s, p) => s + p.outputTokens, 0));
 	const totalCacheRead = $derived(points.reduce((s, p) => s + p.cacheReadTokens, 0));
 	const totalCacheWrite = $derived(points.reduce((s, p) => s + p.cacheWriteTokens, 0));
-	const topPoints = $derived([...points].sort((a, b) => b.totalTokens - a.totalTokens).slice(0, 10));
+	const topPoints = $derived(
+		[...points].sort((a, b) => b.totalTokens - a.totalTokens).slice(0, 10)
+	);
 </script>
 
 <svelte:head><title>Token Analysis — TENEX Analytics</title></svelte:head>
@@ -52,8 +62,10 @@
 				<button
 					class="toggle-btn"
 					class:active={granularity === g}
-					onclick={() => { granularity = g; }}
-				>{g}</button>
+					onclick={() => {
+						granularity = g;
+					}}>{g}</button
+				>
 			{/each}
 		</div>
 	</div>
@@ -78,7 +90,7 @@
 		</div>
 	</dl>
 
-	<Card title="Token Usage Over Time" {loading} error={error}>
+	<Card title="Token Usage Over Time" {loading} {error}>
 		<LineChart
 			data={points}
 			lines={[
@@ -126,28 +138,115 @@
 </div>
 
 <style>
-	.page { display: flex; flex-direction: column; gap: 1.5rem; }
-	.page-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
-	.page-title { font-size: 1.5rem; font-weight: 700; color: var(--text); }
-	.granularity-toggle { display: flex; gap: 0.25rem; }
-	.toggle-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 0.375rem 0.875rem; border-radius: var(--radius); font-size: 0.8125rem; cursor: pointer; text-transform: capitalize; }
-	.toggle-btn.active { background: var(--surface); border-color: var(--border); color: var(--text); }
+	.page {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+	}
+	.page-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 1rem;
+	}
+	.page-title {
+		font-size: 1.5rem;
+		font-weight: 700;
+		color: var(--text);
+	}
+	.granularity-toggle {
+		display: flex;
+		gap: 0.25rem;
+	}
+	.toggle-btn {
+		background: transparent;
+		border: 1px solid var(--border);
+		color: var(--muted);
+		padding: 0.375rem 0.875rem;
+		border-radius: var(--radius);
+		font-size: 0.8125rem;
+		cursor: pointer;
+		text-transform: capitalize;
+	}
+	.toggle-btn.active {
+		background: var(--surface);
+		border-color: var(--border);
+		color: var(--text);
+	}
 
 	/* Metrics strip */
-	.metrics { display: flex; margin: 0; padding: 0; list-style: none; flex-wrap: wrap; gap: 0; }
-	.metric { flex: 1; min-width: 140px; padding: 0 24px; border-right: 1px solid var(--border); }
-	.metric:first-child { padding-left: 0; }
-	.metric.last { border-right: none; }
-	.metric dt { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 6px; }
-	.metric dd { font-size: 24px; font-weight: 600; color: var(--text); line-height: 1; margin: 0; }
-	.metric dd.accent-green { color: var(--green); }
+	.metrics {
+		display: flex;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		flex-wrap: wrap;
+		gap: 0;
+	}
+	.metric {
+		flex: 1;
+		min-width: 140px;
+		padding: 0 24px;
+		border-right: 1px solid var(--border);
+	}
+	.metric:first-child {
+		padding-left: 0;
+	}
+	.metric.last {
+		border-right: none;
+	}
+	.metric dt {
+		font-size: 11px;
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--muted);
+		margin-bottom: 6px;
+	}
+	.metric dd {
+		font-size: 24px;
+		font-weight: 600;
+		color: var(--text);
+		line-height: 1;
+		margin: 0;
+	}
+	.metric dd.accent-green {
+		color: var(--green);
+	}
 
-	.table-wrap { overflow-x: auto; }
-	.data-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
-	.data-table th { text-align: left; padding: 0.5rem 0.75rem; color: var(--muted); border-bottom: 1px solid var(--border); font-weight: 500; }
-	.data-table td { padding: 0.5rem 0.75rem; color: var(--text); border-bottom: 1px solid var(--border); }
-	.data-table tr:last-child td { border-bottom: none; }
-	.num { text-align: right; }
-	.bold { font-weight: 600; }
-	.empty { color: var(--muted); font-size: 0.875rem; padding: 1rem 0; }
+	.table-wrap {
+		overflow-x: auto;
+	}
+	.data-table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 0.8125rem;
+	}
+	.data-table th {
+		text-align: left;
+		padding: 0.5rem 0.75rem;
+		color: var(--muted);
+		border-bottom: 1px solid var(--border);
+		font-weight: 500;
+	}
+	.data-table td {
+		padding: 0.5rem 0.75rem;
+		color: var(--text);
+		border-bottom: 1px solid var(--border);
+	}
+	.data-table tr:last-child td {
+		border-bottom: none;
+	}
+	.num {
+		text-align: right;
+	}
+	.bold {
+		font-weight: 600;
+	}
+	.empty {
+		color: var(--muted);
+		font-size: 0.875rem;
+		padding: 1rem 0;
+	}
 </style>

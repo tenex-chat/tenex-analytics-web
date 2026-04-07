@@ -1,6 +1,6 @@
 // Telemetry store: manages dashboard data state with loading/error handling
 import { writable, derived } from 'svelte/store';
-import type { TelemetrySummary, TokenUsageTrend, CacheMetrics, DateRangeParams } from '$lib/api/types.js';
+import type { TelemetrySummary, TokenUsageTrend, CacheMetrics } from '$lib/api/types.js';
 import { getTelemetrySummary, getTokenTrends, getCacheMetrics } from '$lib/api/client.js';
 import type { SummaryParams } from '$lib/api/client.js';
 

@@ -10,7 +10,11 @@ export const GET: RequestHandler = ({ url }) => {
 		return json({
 			summary: emptyTelemetrySummary(),
 			tokenTrends: { granularity: 'day', points: [] },
-			cacheMetrics: { overall: { efficiencyPercent: 0, totalCacheReadTokens: 0, totalCacheWriteTokens: 0 }, byModel: [], byDay: [] },
+			cacheMetrics: {
+				overall: { efficiencyPercent: 0, totalCacheReadTokens: 0, totalCacheWriteTokens: 0 },
+				byModel: [],
+				byDay: []
+			},
 			costData: { total: 0, byDay: [], byModel: [] }
 		});
 	}
@@ -19,12 +23,12 @@ export const GET: RequestHandler = ({ url }) => {
 	const { clause, params } = buildDateFilter(range);
 	const db = getDb();
 
-	const statusClause = clause
-		? clause + " AND status = 'success'"
-		: "WHERE status = 'success'";
+	const statusClause = clause ? clause + " AND status = 'success'" : "WHERE status = 'success'";
 
 	// Summary
-	const summaryRow = db.prepare(`
+	const summaryRow = db
+		.prepare(
+			`
 		SELECT
 			COALESCE(SUM(input_tokens), 0)                AS totalInputTokens,
 			COALESCE(SUM(output_tokens), 0)               AS totalOutputTokens,
@@ -37,7 +41,9 @@ export const GET: RequestHandler = ({ url }) => {
 			MAX(date(started_at_ms/1000, 'unixepoch'))    AS dateTo
 		FROM llm_requests
 		${statusClause}
-	`).get(params) as Record<string, number | string>;
+	`
+		)
+		.get(params) as Record<string, number | string>;
 
 	const cacheRead = Number(summaryRow.totalCacheReadTokens);
 	const inputTokens = Number(summaryRow.totalInputTokens);
@@ -59,7 +65,9 @@ export const GET: RequestHandler = ({ url }) => {
 	};
 
 	// Token trends (daily)
-	const trendRows = db.prepare(`
+	const trendRows = db
+		.prepare(
+			`
 		SELECT
 			date(started_at_ms/1000, 'unixepoch')         AS date,
 			COALESCE(SUM(input_tokens), 0)                AS inputTokens,
@@ -72,7 +80,9 @@ export const GET: RequestHandler = ({ url }) => {
 		${statusClause}
 		GROUP BY date(started_at_ms/1000, 'unixepoch')
 		ORDER BY date ASC
-	`).all(params) as Array<Record<string, number | string>>;
+	`
+		)
+		.all(params) as Array<Record<string, number | string>>;
 
 	const tokenTrends = {
 		granularity: 'day' as const,
@@ -88,7 +98,9 @@ export const GET: RequestHandler = ({ url }) => {
 	};
 
 	// Cache metrics by model
-	const byModelRows = db.prepare(`
+	const byModelRows = db
+		.prepare(
+			`
 		SELECT
 			COALESCE(model, 'unknown')                    AS label,
 			COALESCE(SUM(input_cache_read_tokens), 0)     AS cacheReadTokens,
@@ -99,7 +111,9 @@ export const GET: RequestHandler = ({ url }) => {
 		${statusClause}
 		GROUP BY model
 		ORDER BY cacheReadTokens DESC
-	`).all(params) as Array<Record<string, number | string>>;
+	`
+		)
+		.all(params) as Array<Record<string, number | string>>;
 
 	const byModelPoints = byModelRows.map((r) => {
 		const cr = Number(r.cacheReadTokens);
@@ -116,7 +130,9 @@ export const GET: RequestHandler = ({ url }) => {
 	});
 
 	// Cache metrics by day
-	const byDayRows = db.prepare(`
+	const byDayRows = db
+		.prepare(
+			`
 		SELECT
 			date(started_at_ms/1000, 'unixepoch')         AS label,
 			COALESCE(SUM(input_cache_read_tokens), 0)     AS cacheReadTokens,
@@ -127,7 +143,9 @@ export const GET: RequestHandler = ({ url }) => {
 		${statusClause}
 		GROUP BY date(started_at_ms/1000, 'unixepoch')
 		ORDER BY label ASC
-	`).all(params) as Array<Record<string, number | string>>;
+	`
+		)
+		.all(params) as Array<Record<string, number | string>>;
 
 	const byDayPoints = byDayRows.map((r) => {
 		const cr = Number(r.cacheReadTokens);
@@ -154,7 +172,9 @@ export const GET: RequestHandler = ({ url }) => {
 	};
 
 	// Cost data by day
-	const costByDayRows = db.prepare(`
+	const costByDayRows = db
+		.prepare(
+			`
 		SELECT
 			date(started_at_ms/1000, 'unixepoch')         AS date,
 			COALESCE(SUM(cost_usd), 0)                    AS totalCostUsd,
@@ -163,10 +183,14 @@ export const GET: RequestHandler = ({ url }) => {
 		${statusClause}
 		GROUP BY date(started_at_ms/1000, 'unixepoch')
 		ORDER BY date ASC
-	`).all(params) as Array<Record<string, number | string>>;
+	`
+		)
+		.all(params) as Array<Record<string, number | string>>;
 
 	// Cost data by model
-	const costByModelRows = db.prepare(`
+	const costByModelRows = db
+		.prepare(
+			`
 		SELECT
 			COALESCE(model, 'unknown')                    AS model,
 			COALESCE(SUM(cost_usd), 0)                    AS totalCostUsd,
@@ -175,7 +199,9 @@ export const GET: RequestHandler = ({ url }) => {
 		${statusClause}
 		GROUP BY model
 		ORDER BY totalCostUsd DESC
-	`).all(params) as Array<Record<string, number | string>>;
+	`
+		)
+		.all(params) as Array<Record<string, number | string>>;
 
 	const costData = {
 		total: Number(summaryRow.totalCostUsd),

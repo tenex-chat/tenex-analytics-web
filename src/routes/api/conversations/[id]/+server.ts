@@ -6,7 +6,9 @@ import { getDb } from '$lib/server/database.js';
 function hasTable(name: string): boolean {
 	try {
 		const db = getDb();
-		const row = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`).get(name);
+		const row = db
+			.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`)
+			.get(name);
 		return row !== undefined;
 	} catch {
 		return false;
@@ -36,7 +38,7 @@ function countSystemReminders(text: string): number {
 	// Count standalone <system-reminder> (singular) tags — each is one reminder
 	const singular = text.match(/<system-reminder[\s>]/g);
 	if (singular) {
-		count += singular.filter(m => !m.startsWith('<system-reminders')).length;
+		count += singular.filter((m) => !m.startsWith('<system-reminders')).length;
 	}
 	return count;
 }
@@ -51,7 +53,9 @@ export const GET: RequestHandler = ({ params }) => {
 	try {
 		const db = getDb();
 
-		const requestRows = db.prepare(`
+		const requestRows = db
+			.prepare(
+				`
 			SELECT
 				request_id AS id,
 				started_at_ms,
@@ -65,7 +69,9 @@ export const GET: RequestHandler = ({ params }) => {
 			FROM llm_requests
 			WHERE conversation_id = @conversationId
 			ORDER BY started_at_ms ASC
-		`).all({ conversationId }) as Array<Record<string, unknown>>;
+		`
+			)
+			.all({ conversationId }) as Array<Record<string, unknown>>;
 
 		const hasMessages = hasTable('llm_request_messages');
 		const msgStmt = hasMessages
@@ -82,16 +88,24 @@ export const GET: RequestHandler = ({ params }) => {
 			: null;
 
 		const requests = requestRows.map((r) => {
-			let messages: Array<{ role: string; classification: string; tokenCount: number; contentPreview: string; systemReminderCount: number }> = [];
+			let messages: Array<{
+				role: string;
+				classification: string;
+				tokenCount: number;
+				contentPreview: string;
+				systemReminderCount: number;
+			}> = [];
 			if (msgStmt) {
 				try {
-					messages = (msgStmt.all({ requestId: r.id }) as Array<Record<string, unknown>>).map((m) => ({
-						role: m.role as string,
-						classification: m.classification as string,
-						tokenCount: Number(m.tokenCount),
-						contentPreview: m.contentPreview as string,
-						systemReminderCount: countSystemReminders(m.contentPreview as string)
-					}));
+					messages = (msgStmt.all({ requestId: r.id }) as Array<Record<string, unknown>>).map(
+						(m) => ({
+							role: m.role as string,
+							classification: m.classification as string,
+							tokenCount: Number(m.tokenCount),
+							contentPreview: m.contentPreview as string,
+							systemReminderCount: countSystemReminders(m.contentPreview as string)
+						})
+					);
 				} catch {
 					// ignore
 				}

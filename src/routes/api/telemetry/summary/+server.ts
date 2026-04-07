@@ -40,7 +40,9 @@ export const GET: RequestHandler = ({ url }) => {
 		? clause + ' AND ' + allConditions.join(' AND ')
 		: 'WHERE ' + allConditions.join(' AND ');
 
-	const row = db.prepare(`
+	const row = db
+		.prepare(
+			`
 		SELECT
 			COALESCE(SUM(input_tokens), 0)                AS totalInputTokens,
 			COALESCE(SUM(output_tokens), 0)               AS totalOutputTokens,
@@ -57,7 +59,9 @@ export const GET: RequestHandler = ({ url }) => {
 			) AS cacheEfficiencyPercent
 		FROM llm_requests
 		${statusClause}
-	`).get(params) as Record<string, number | string>;
+	`
+		)
+		.get(params) as Record<string, number | string>;
 
 	return json({
 		totalInputTokens: Number(row.totalInputTokens),

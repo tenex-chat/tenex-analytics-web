@@ -1,5 +1,10 @@
 <script lang="ts">
-	const { title = '', loading = false, error = null, class_ = '' } = $props<{
+	const {
+		title = '',
+		loading = false,
+		error = null,
+		class_ = ''
+	} = $props<{
 		title?: string;
 		loading?: boolean;
 		error?: string | null;

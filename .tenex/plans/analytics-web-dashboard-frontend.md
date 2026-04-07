@@ -24,6 +24,7 @@ The frontend adopts a **hub-and-spoke route layout** with a central navigation b
 - **Spokes**: Individual page routes handle specific domains (tokens, cache, costs, context windows, conversations)
 
 **Route hierarchy:**
+
 - `/` — Dashboard overview (home page with key metrics and summary charts)
 - `/tokens` — Token usage analysis (detailed trends, filters, drill-down to conversations)
 - `/cache` — Cache efficiency dashboard (hit rates, trends by provider/model)
@@ -71,23 +72,25 @@ State is organized into **four distinct stores**, each focused on a single respo
 
 ```typescript
 export const filters = writable<FilterState>({
-  projectId: null,        // Filter by project
-  agentId: null,          // Filter by agent
-  providerId: null,       // Filter by provider (OpenAI, Anthropic, etc.)
-  modelId: null,          // Filter by model
-  startDate: null,        // Date range start (ISO 8601)
-  endDate: null,          // Date range end (ISO 8601)
-  granularity: 'daily',   // Aggregation granularity: hourly, daily, weekly
+	projectId: null, // Filter by project
+	agentId: null, // Filter by agent
+	providerId: null, // Filter by provider (OpenAI, Anthropic, etc.)
+	modelId: null, // Filter by model
+	startDate: null, // Date range start (ISO 8601)
+	endDate: null, // Date range end (ISO 8601)
+	granularity: 'daily' // Aggregation granularity: hourly, daily, weekly
 });
 ```
 
 **Design rationale:**
+
 - Centralized filter state reduces prop drilling
 - URL query parameters (via `$page.url.searchParams`) are the source of truth; store is derived from URL on mount
 - Filter changes trigger re-fetch of all relevant data stores (tokens, cache, costs)
 - Filters persist across page navigation via URL (deep linking)
 
-**URL sync pattern**: 
+**URL sync pattern**:
+
 ```
 /tokens?projectId=proj-1&startDate=2024-01-01&endDate=2024-01-31&granularity=daily
 ```
@@ -97,46 +100,51 @@ Filter store subscribes to `$page` store; on mount, hydrates from URL query para
 #### 2. **Data Stores** (one per API endpoint, `src/lib/stores/data/`)
 
 **Token Usage Store** (`tokens.ts`):
+
 ```typescript
 export const tokenData = writable<TokenData>({
-  data: [],               // Array of {timestamp, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens}
-  loading: false,
-  error: null,
-  lastFetch: null,
+	data: [], // Array of {timestamp, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens}
+	loading: false,
+	error: null,
+	lastFetch: null
 });
 ```
 
 **Cache Metrics Store** (`cache.ts`):
+
 ```typescript
 export const cacheData = writable<CacheData>({
-  data: [],               // Array of {period, hitRate, missRate, agentId, provider}
-  loading: false,
-  error: null,
-  lastFetch: null,
+	data: [], // Array of {period, hitRate, missRate, agentId, provider}
+	loading: false,
+	error: null,
+	lastFetch: null
 });
 ```
 
 **Cost Data Store** (`costs.ts`):
+
 ```typescript
 export const costData = writable<CostData>({
-  data: [],               // Array of {period, totalCost, costByProvider, costByModel}
-  loading: false,
-  error: null,
-  lastFetch: null,
+	data: [], // Array of {period, totalCost, costByProvider, costByModel}
+	loading: false,
+	error: null,
+	lastFetch: null
 });
 ```
 
 **Context Windows Store** (`contextWindows.ts`):
+
 ```typescript
 export const contextWindowData = writable<ContextWindowData>({
-  data: [],               // Array of {agentId, model, usedTokens, maxTokens, percentUtilization, warning}
-  loading: false,
-  error: null,
-  lastFetch: null,
+	data: [], // Array of {agentId, model, usedTokens, maxTokens, percentUtilization, warning}
+	loading: false,
+	error: null,
+	lastFetch: null
 });
 ```
 
 **Design rationale:**
+
 - Each store is independently fetchable and cacheable
 - `loading` and `error` fields enable granular UI state management (per chart)
 - Stores are derived from filters: subscriptions to `filters` trigger refetch
@@ -149,6 +157,7 @@ export const theme = writable<'light' | 'dark' | 'system'>('system');
 ```
 
 **Features:**
+
 - Wraps Svelte store with localStorage persistence (SSR-safe via `browser` check)
 - On mount, reads user preference from localStorage; falls back to system preference
 - Theme changes update `document.documentElement.classList` to toggle `dark` class
@@ -162,6 +171,7 @@ export const selectedConversationId = writable<string | null>(null);
 ```
 
 **Design rationale:**
+
 - Manages UI state that doesn't affect data (sidebar collapse, modal state, selected item)
 - Persisted to localStorage for UX consistency
 - Separate from data and filter stores for clarity
@@ -175,23 +185,24 @@ Page components use SvelteKit's `load()` function for initial data loading:
 ```typescript
 // src/routes/+page.svelte - Dashboard home
 export const load = (async ({ fetch, url }) => {
-  const filters = parseUrlFilters(url.searchParams);
-  
-  const [summary, tokenTrends] = await Promise.all([
-    fetch(`/api/telemetry/summary?${qs.stringify(filters)}`),
-    fetch(`/api/tokens?${qs.stringify(filters)}`)
-  ]);
-  
-  return {
-    initialData: {
-      summary: await summary.json(),
-      tokenTrends: await tokenTrends.json()
-    }
-  };
+	const filters = parseUrlFilters(url.searchParams);
+
+	const [summary, tokenTrends] = await Promise.all([
+		fetch(`/api/telemetry/summary?${qs.stringify(filters)}`),
+		fetch(`/api/tokens?${qs.stringify(filters)}`)
+	]);
+
+	return {
+		initialData: {
+			summary: await summary.json(),
+			tokenTrends: await tokenTrends.json()
+		}
+	};
 }) satisfies PageLoad;
 ```
 
 **Benefits:**
+
 - Server-side rendering (SSR) for faster initial page load
 - Data is available before client-side JavaScript runs
 - Reduced client-side loading spinners (users see data immediately)
@@ -203,20 +214,20 @@ When filters change on the client, data stores are updated via `fetch()`:
 ```typescript
 // In a component or store subscription:
 filters.subscribe(async (newFilters) => {
-  tokenData.update(d => ({ ...d, loading: true }));
-  
-  try {
-    const res = await fetch(`/api/tokens?${qs.stringify(newFilters)}`);
-    const data = await res.json();
-    tokenData.set({
-      data,
-      loading: false,
-      error: null,
-      lastFetch: Date.now()
-    });
-  } catch (err) {
-    tokenData.update(d => ({ ...d, error: err.message, loading: false }));
-  }
+	tokenData.update((d) => ({ ...d, loading: true }));
+
+	try {
+		const res = await fetch(`/api/tokens?${qs.stringify(newFilters)}`);
+		const data = await res.json();
+		tokenData.set({
+			data,
+			loading: false,
+			error: null,
+			lastFetch: Date.now()
+		});
+	} catch (err) {
+		tokenData.update((d) => ({ ...d, error: err.message, loading: false }));
+	}
 });
 ```
 
@@ -230,7 +241,7 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // In store subscription:
 if (Date.now() - lastFetch > CACHE_TTL) {
-  // Refetch
+	// Refetch
 }
 ```
 
@@ -243,10 +254,10 @@ Filter dropdowns use debounced input to avoid excessive API calls:
 ```typescript
 // In FilterBar.svelte:
 function handleFilterChange(key: string, value: any) {
-  clearTimeout(filterTimeout);
-  filterTimeout = setTimeout(() => {
-    goto(`?${qs.stringify({ ...currentFilters, [key]: value })}`);
-  }, 300);
+	clearTimeout(filterTimeout);
+	filterTimeout = setTimeout(() => {
+		goto(`?${qs.stringify({ ...currentFilters, [key]: value })}`);
+	}, 300);
 }
 ```
 
@@ -284,14 +295,14 @@ Each chart type has a reusable wrapper that handles dark mode, responsive sizing
   import { LineChart as RChartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
   import { theme } from '$lib/stores/theme';
   import { getChartColors } from '$lib/utils/colors';
-  
+
   export let data = [];
   export let xKey = 'timestamp';
   export let lines = []; // [ { key: 'inputTokens', stroke: 'blue', name: 'Input' }, ...]
   export let height = 300;
-  
+
   $: colors = getChartColors($theme);
-  
+
   function handleLineClick(data) {
     // Drill-down: navigate to /conversations?conversationId=...
   }
@@ -312,6 +323,7 @@ Each chart type has a reusable wrapper that handles dark mode, responsive sizing
 ```
 
 **Reusable wrapper benefits:**
+
 - Centralized dark mode theming (all charts update when theme changes)
 - Consistent tooltip and legend styling
 - Consistent interaction handlers (drill-down, filtering)
@@ -324,35 +336,35 @@ Color palette utility (`src/lib/utils/colors.ts`):
 
 ```typescript
 export function getChartColors(theme: 'light' | 'dark') {
-  if (theme === 'dark') {
-    return {
-      gridStroke: '#374151',        // gray-700
-      xAxisStroke: '#9CA3AF',       // gray-400
-      yAxisStroke: '#9CA3AF',
-      tooltipBg: '#1F2937',         // gray-900
-      tooltipBorder: '#4B5563',     // gray-800
-      lineColors: {
-        primary: '#60A5FA',         // blue-400
-        success: '#34D399',         // emerald-400
-        warning: '#FBBF24',         // amber-400
-        danger: '#F87171',          // red-400
-      }
-    };
-  } else {
-    return {
-      gridStroke: '#E5E7EB',        // gray-200
-      xAxisStroke: '#6B7280',       // gray-500
-      yAxisStroke: '#6B7280',
-      tooltipBg: '#FFFFFF',
-      tooltipBorder: '#E5E7EB',
-      lineColors: {
-        primary: '#3B82F6',         // blue-500
-        success: '#10B981',         // emerald-500
-        warning: '#F59E0B',         // amber-500
-        danger: '#EF4444',          // red-500
-      }
-    };
-  }
+	if (theme === 'dark') {
+		return {
+			gridStroke: '#374151', // gray-700
+			xAxisStroke: '#9CA3AF', // gray-400
+			yAxisStroke: '#9CA3AF',
+			tooltipBg: '#1F2937', // gray-900
+			tooltipBorder: '#4B5563', // gray-800
+			lineColors: {
+				primary: '#60A5FA', // blue-400
+				success: '#34D399', // emerald-400
+				warning: '#FBBF24', // amber-400
+				danger: '#F87171' // red-400
+			}
+		};
+	} else {
+		return {
+			gridStroke: '#E5E7EB', // gray-200
+			xAxisStroke: '#6B7280', // gray-500
+			yAxisStroke: '#6B7280',
+			tooltipBg: '#FFFFFF',
+			tooltipBorder: '#E5E7EB',
+			lineColors: {
+				primary: '#3B82F6', // blue-500
+				success: '#10B981', // emerald-500
+				warning: '#F59E0B', // amber-500
+				danger: '#EF4444' // red-500
+			}
+		};
+	}
 }
 ```
 
@@ -365,30 +377,33 @@ Charts subscribe to theme store; when theme changes, colors are recalculated and
 Clicking on data points in charts navigates to filtered views or details:
 
 1. **Agent name click** → Filter `/tokens` or `/cache` page to that agent:
+
    ```typescript
    // In LineChart.svelte click handler:
    function handleClick(data) {
-     goto(`/tokens?agentId=${data.agentId}`);
+   	goto(`/tokens?agentId=${data.agentId}`);
    }
    ```
 
 2. **Data point in token chart** → Open conversation details:
+
    ```typescript
    function handleClick(data) {
-     goto(`/conversations/${data.conversationId}`);
+   	goto(`/conversations/${data.conversationId}`);
    }
    ```
 
 3. **Cost breakdown segment** → Filter `/costs` to that provider/model:
    ```typescript
    function handleClick(data) {
-     goto(`/costs?providerId=${data.providerId}&modelId=${data.modelId}`);
+   	goto(`/costs?providerId=${data.providerId}&modelId=${data.modelId}`);
    }
    ```
 
 #### Filter Bar Updates
 
 When user changes filters in FilterBar:
+
 1. URL is updated via `goto()` with `replaceState: true` (browser back button skips filter-only changes)
 2. `filters` store is updated (via subscription to `$page`)
 3. All relevant data stores trigger refetch
@@ -407,6 +422,7 @@ Clicking breadcrumb segments removes filters or navigates up.
 #### URL Query Parameters (Deep Linking)
 
 All filter state is encoded in URL:
+
 ```
 /tokens?projectId=proj-1&agentId=agent-1&startDate=2024-01-01&endDate=2024-01-31&granularity=daily
 /conversations/conv-123?agentId=agent-1
@@ -423,7 +439,7 @@ The project uses Tailwind's `dark:` class-based dark mode:
 ```typescript
 // svelte.config.js or tailwind.config.js:
 module.exports = {
-  darkMode: 'class', // Enable dark mode via class toggle
+	darkMode: 'class' // Enable dark mode via class toggle
 };
 ```
 
@@ -432,13 +448,13 @@ Root HTML element's `dark` class is toggled by theme store:
 ```typescript
 // src/lib/stores/theme.ts:
 theme.subscribe((value) => {
-  if (typeof document === 'undefined') return;
-  
-  if (value === 'dark') {
-    document.documentElement.classList.add('dark');
-  } else {
-    document.documentElement.classList.remove('dark');
-  }
+	if (typeof document === 'undefined') return;
+
+	if (value === 'dark') {
+		document.documentElement.classList.add('dark');
+	} else {
+		document.documentElement.classList.remove('dark');
+	}
 });
 ```
 
@@ -448,18 +464,18 @@ Additional theme colors via CSS variables (`src/app.css`):
 
 ```css
 :root {
-  --color-primary: #3B82F6;         /* light mode primary */
-  --color-primary-dark: #60A5FA;    /* dark mode primary */
-  --color-bg: #FFFFFF;
-  --color-bg-dark: #0F1419;
-  --color-text: #1F2937;
-  --color-text-dark: #F3F4F6;
+	--color-primary: #3b82f6; /* light mode primary */
+	--color-primary-dark: #60a5fa; /* dark mode primary */
+	--color-bg: #ffffff;
+	--color-bg-dark: #0f1419;
+	--color-text: #1f2937;
+	--color-text-dark: #f3f4f6;
 }
 
 .dark {
-  --color-primary: var(--color-primary-dark);
-  --color-bg: var(--color-bg-dark);
-  --color-text: var(--color-text-dark);
+	--color-primary: var(--color-primary-dark);
+	--color-bg: var(--color-bg-dark);
+	--color-text: var(--color-text-dark);
 }
 ```
 
@@ -480,10 +496,13 @@ To prevent light mode flash on dark mode load:
 ```html
 <!-- src/app.html -->
 <script>
-  const theme = localStorage.getItem('theme') || 'system';
-  if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-    document.documentElement.classList.add('dark');
-  }
+	const theme = localStorage.getItem('theme') || 'system';
+	if (
+		theme === 'dark' ||
+		(theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+	) {
+		document.documentElement.classList.add('dark');
+	}
 </script>
 ```
 
@@ -498,16 +517,16 @@ Layout adapts via Tailwind breakpoints:
 ```svelte
 <!-- Filter bar: vertical stack on mobile, horizontal on desktop -->
 <div class="flex flex-col gap-2 md:flex-row md:gap-4">
-  <FilterDropdown label="Project" />
-  <FilterDropdown label="Agent" />
-  <DateRangePicker />
+	<FilterDropdown label="Project" />
+	<FilterDropdown label="Agent" />
+	<DateRangePicker />
 </div>
 
 <!-- Chart grid: 1 column on mobile, 2 on tablet, 3 on desktop -->
 <div class="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-  <MetricCard />
-  <MetricCard />
-  <MetricCard />
+	<MetricCard />
+	<MetricCard />
+	<MetricCard />
 </div>
 ```
 
@@ -517,9 +536,7 @@ Charts use Recharts' `ResponsiveContainer` for fluid width:
 
 ```svelte
 <ResponsiveContainer width="100%" height={300}>
-  <LineChart data={data}>
-    ...
-  </LineChart>
+	<LineChart {data}>...</LineChart>
 </ResponsiveContainer>
 ```
 
@@ -531,9 +548,7 @@ Tables use horizontal scroll on mobile:
 
 ```svelte
 <div class="overflow-x-auto">
-  <table class="w-full">
-    ...
-  </table>
+	<table class="w-full">...</table>
 </div>
 ```
 
@@ -547,18 +562,16 @@ Interactive elements have descriptive ARIA labels:
 
 ```svelte
 <!-- Filter dropdown -->
-<select aria-label="Filter by project">
-  ...
-</select>
+<select aria-label="Filter by project"> ... </select>
 
 <!-- Chart container -->
 <div role="region" aria-label="Token usage trends">
-  <LineChart data={data} />
+	<LineChart {data} />
 </div>
 
 <!-- Loading state -->
 <div role="status" aria-live="polite" aria-label="Loading data">
-  <LoadingState />
+	<LoadingState />
 </div>
 ```
 
@@ -589,41 +602,49 @@ Interactive elements have descriptive ARIA labels:
 ### Route Components
 
 #### `src/routes/+layout.svelte`
+
 - **Action**: create
 - **What**: Root layout component with header, navigation, footer, and theme context provider
 - **Why**: Wraps all pages; provides persistent navigation and theme infrastructure
 
 #### `src/routes/+page.svelte`
+
 - **Action**: create
 - **What**: Dashboard home page with summary metric cards and overview charts
 - **Why**: Entry point showing KPIs and trends at a glance
 
 #### `src/routes/tokens/+page.svelte`
+
 - **Action**: create
 - **What**: Token usage analysis page with detailed trends, filters, drill-down
 - **Why**: Dedicated page for deep-dive token analysis
 
 #### `src/routes/cache/+page.svelte`
+
 - **Action**: create
 - **What**: Cache efficiency dashboard with hit rates and trends
 - **Why**: Specialized view for cache performance monitoring
 
 #### `src/routes/costs/+page.svelte`
+
 - **Action**: create
 - **What**: Cost analysis and trends by project, agent, provider, model
 - **Why**: Financial insights and cost tracking
 
 #### `src/routes/context-windows/+page.svelte`
+
 - **Action**: create
 - **What**: Context window utilization dashboard with warning indicators
 - **Why**: Monitor agents approaching token limits
 
 #### `src/routes/conversations/[id]/+page.svelte`
+
 - **Action**: create
 - **What**: Conversation detail view with message breakdown and token distribution
 - **Why**: Inspect individual conversations for deep analysis
 
 #### `src/routes/conversations/[id]/+page.ts`
+
 - **Action**: create
 - **What**: Page load function that fetches conversation data by ID
 - **Why**: Server-side data loading for initial render
@@ -631,36 +652,43 @@ Interactive elements have descriptive ARIA labels:
 ### Stores
 
 #### `src/lib/stores/filters.ts`
+
 - **Action**: create
 - **What**: Global filters store with URL synchronization
 - **Why**: Centralized filter state; enables deep linking and filter persistence
 
 #### `src/lib/stores/data/tokens.ts`
+
 - **Action**: create
 - **What**: Token usage data store with loading/error states
 - **Why**: Reactive token data across multiple pages
 
 #### `src/lib/stores/data/cache.ts`
+
 - **Action**: create
 - **What**: Cache metrics data store
 - **Why**: Reactive cache data updates
 
 #### `src/lib/stores/data/costs.ts`
+
 - **Action**: create
 - **What**: Cost analysis data store
 - **Why**: Reactive cost data updates
 
 #### `src/lib/stores/data/contextWindows.ts`
+
 - **Action**: create
 - **What**: Context window utilization data store
 - **Why**: Reactive context window monitoring
 
 #### `src/lib/stores/ui.ts`
+
 - **Action**: create
 - **What**: UI state store (sidebar, modals, selection)
 - **Why**: Manage non-data UI state separately from data stores
 
 #### `src/lib/stores/theme.ts` (from scaffolding)
+
 - **Action**: enhance
 - **What**: Add reactive theme subscription for Recharts color updates
 - **Why**: Ensures all charts update when theme changes
@@ -668,56 +696,67 @@ Interactive elements have descriptive ARIA labels:
 ### Components
 
 #### `src/lib/components/LineChart.svelte`
+
 - **Action**: create
 - **What**: Recharts LineChart wrapper with dark mode and drill-down
 - **Why**: Reusable component for time-series data (tokens, cache trends, costs)
 
 #### `src/lib/components/BarChart.svelte`
+
 - **Action**: create
 - **What**: Recharts BarChart wrapper for categorical comparisons
 - **Why**: Display data by agent, provider, or model
 
 #### `src/lib/components/PieChart.svelte`
+
 - **Action**: create
 - **What**: Recharts PieChart wrapper for proportional data
 - **Why**: Cost breakdown, cache hit/miss ratios
 
 #### `src/lib/components/MetricCard.svelte`
+
 - **Action**: create
 - **What**: Card displaying single metric with optional sparkline
 - **Why**: KPI displays (total tokens, cache hit rate, avg cost)
 
 #### `src/lib/components/FilterBar.svelte`
+
 - **Action**: create
 - **What**: Dropdowns and date range picker for filtering
 - **Why**: User-facing filter controls on every page
 
 #### `src/lib/components/Table.svelte`
+
 - **Action**: create
 - **What**: Generic paginated table component
 - **Why**: Display conversations, messages in tabular format
 
 #### `src/lib/components/Breadcrumb.svelte`
+
 - **Action**: create
 - **What**: Navigation breadcrumbs showing current filters and path
 - **Why**: Provide context and enable quick navigation
 
 #### `src/lib/components/LoadingState.svelte`
+
 - **Action**: create
 - **What**: Skeleton screens and spinners for loading states
 - **Why**: Better UX during data fetch
 
 #### `src/lib/components/ErrorBoundary.svelte`
+
 - **Action**: create
 - **What**: Error fallback UI with retry button
 - **Why**: Graceful error handling for failed API calls
 
 #### `src/lib/components/Navigation.svelte` (from scaffolding)
+
 - **Action**: enhance
 - **What**: Add active link highlighting, responsive mobile menu
 - **Why**: Better navigation UX on mobile
 
 #### `src/lib/components/ThemeToggle.svelte` (from scaffolding)
+
 - **Action**: enhance
 - **What**: Add 'system' preference option, smooth transitions
 - **Why**: More user choice and better UX
@@ -725,26 +764,31 @@ Interactive elements have descriptive ARIA labels:
 ### Utilities
 
 #### `src/lib/utils/colors.ts` (from scaffolding)
+
 - **Action**: enhance
 - **What**: Add `getChartColors()` function for Recharts theming
 - **Why**: Centralized dark mode color management for charts
 
 #### `src/lib/utils/format.ts` (from scaffolding)
+
 - **Action**: enhance
 - **What**: Add functions for formatting large numbers (1.2M tokens), percentages (95.3%), currency
 - **Why**: Consistent number formatting across dashboard
 
 #### `src/lib/utils/api.ts`
+
 - **Action**: create
 - **What**: API call helpers for data stores (getTrendData, getCacheMetrics, etc.)
 - **Why**: Reduce boilerplate in store subscriptions
 
 #### `src/lib/utils/url.ts`
+
 - **Action**: create
 - **What**: URL query parameter parsing and serialization, filter state encoding
 - **Why**: Handle URL ↔ filter store synchronization
 
 #### `src/lib/utils/cache.ts`
+
 - **Action**: create
 - **What**: Cache validation and invalidation utilities (isStale, invalidate, etc.)
 - **Why**: Manage cache TTL and manual invalidation across stores
@@ -958,17 +1002,20 @@ Interactive elements have descriptive ARIA labels:
 ## Verification
 
 ### Build & Development
+
 - `npm run dev` starts dev server; all pages load without errors
 - Hot module reload (HMR) works: editing a component updates browser instantly
 - `npm run build` completes successfully; `.svelte-kit/build` contains optimized assets
 
 ### Route Navigation
+
 - All routes are accessible via URL bar
 - Breadcrumbs correctly show current location
 - Browser back/forward buttons work (including filter-only navigation)
 - URL query parameters are always in sync with filter state
 
 ### Data Fetching & Stores
+
 - Initial page load uses SvelteKit `load()` for server-side data (fast initial render)
 - Changing filters triggers refetch of relevant data stores
 - Loading state displays while data is fetching
@@ -976,6 +1023,7 @@ Interactive elements have descriptive ARIA labels:
 - Cache invalidation works (stale data >5 min old triggers refetch)
 
 ### Component Rendering
+
 - All pages render without console errors
 - MetricCards display values correctly (formatted with getFormatter utilities)
 - Charts render with data and are interactive (click → drill-down, hover → tooltip)
@@ -983,6 +1031,7 @@ Interactive elements have descriptive ARIA labels:
 - Tables paginate correctly and are sortable
 
 ### Dark Mode
+
 - Theme toggle switches all pages between light and dark
 - All text has sufficient contrast in both modes (WCAG AA)
 - Charts update colors when theme changes (no re-render required)
@@ -990,12 +1039,14 @@ Interactive elements have descriptive ARIA labels:
 - No flash of unstyled content on page load
 
 ### Responsive Design
+
 - Mobile (375px): single-column layout, FilterBar stacks, navigation is accessible
 - Tablet (768px): adaptive grid layout, FilterBar is horizontal
 - Desktop (1920px): full layout with sidebars, charts scale to screen width
 - No horizontal scroll on any page except tables (which scroll for data)
 
 ### Accessibility
+
 - All interactive elements are keyboard-focusable (Tab navigation works)
 - Buttons, links, and form inputs respond to Enter/Space keys
 - Dropdowns and modals close on Escape
@@ -1004,12 +1055,14 @@ Interactive elements have descriptive ARIA labels:
 - Color is not the only indicator (icons + colors for status; text for error messages)
 
 ### Deep Linking & URL State
+
 - Share a URL with filters (e.g., `/tokens?agentId=...&startDate=...&endDate=...`)
 - Recipient loads URL and sees filters applied and data already loaded
 - Modifying filters updates URL; browser back/forward restores filter state
 - Reloading page with complex filters restores exact state
 
 ### Chart Interactions
+
 - Clicking agent name in chart filters page to that agent
 - Clicking data point opens conversation detail
 - Clicking legend items toggle visibility (if applicable)
@@ -1017,6 +1070,7 @@ Interactive elements have descriptive ARIA labels:
 - Drill-down navigation breadcrumbs show path
 
 ### Performance
+
 - Initial page load (home) completes in <2 seconds
 - Chart rendering is smooth (no jank when data updates)
 - Filter changes debounced (300ms) to avoid excessive API calls
@@ -1024,6 +1078,7 @@ Interactive elements have descriptive ARIA labels:
 - Network tab shows no duplicate requests; API responses are cached appropriately
 
 ### TypeScript & Type Safety
+
 - `tsc --noEmit` produces no type errors across all pages and components
 - API responses are typed from `src/lib/api/types.ts`
 - Store values have correct inferred types
@@ -1031,6 +1086,7 @@ Interactive elements have descriptive ARIA labels:
 - Hovering over variables in IDE shows correct types
 
 ### Code Quality
+
 - `npm run lint` reports no errors
 - `npm run format:check` passes (all code formatted consistently)
 - Component props are well-documented with JSDoc comments
@@ -1062,8 +1118,8 @@ src/routes/             src/routes/tokens/     src/routes/
     ├─ MetricCard         ├─ LineChart          ├─ BarChart (hit rates)
     ├─ LineChart          │   (token trends)    ├─ LineChart (trends)
     │   (sparklines)      ├─ BarChart           └─ MetricCards
-    └─ Breadcrumb         │   (by agent)        
-                          └─ Breadcrumb         
+    └─ Breadcrumb         │   (by agent)
+                          └─ Breadcrumb
 
     ┌─────────────────────┐  ┌──────────────────┐  ┌──────────────────┐
     ↓                     ↓  ↓                  ↓  ↓                  ↓
@@ -1076,8 +1132,8 @@ costs/                context-windows/        conversations/[id]/
 ├─ LineChart          ├─ BarChart             │   (token distribution)
 │   (trends)          │   (utilization %)     └─ Table
 ├─ Table              └─ Status indicators    │   (messages)
-│   (by category)            (warnings)       
-└─ Breadcrumb         
+│   (by category)            (warnings)
+└─ Breadcrumb
 
 Data Layer (Svelte Stores):
 ┌──────────────────────────────────────────────────┐
@@ -1143,18 +1199,19 @@ Responsive utilities: md:, lg:, xl: prefixes for breakpoints
 ### Dark Mode Class Naming
 
 All dark-mode overrides use Tailwind's `dark:` prefix:
+
 ```svelte
-<div class="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">
-  Content
-</div>
+<div class="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">Content</div>
 ```
 
 ### Component Structure Example
 
 ```svelte
 <!-- src/lib/components/Card.svelte -->
-<div class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:shadow-lg">
-  <slot />
+<div
+	class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:shadow-lg"
+>
+	<slot />
 </div>
 ```
 
@@ -1169,4 +1226,3 @@ This plan covers the core UI layer. Future enhancements (out of scope):
 - **Time-Travel**: Ability to inspect historical snapshots of the dashboard
 - **Webhooks/Integrations**: Send alerts to Slack, email, or other systems
 - **Multi-user Support**: User accounts, role-based access, shared workspaces (requires backend changes)
-

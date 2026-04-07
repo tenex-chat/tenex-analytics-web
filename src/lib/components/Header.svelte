@@ -51,7 +51,9 @@
 		text-decoration: none;
 		padding: 0.375rem 0.75rem;
 		border-radius: var(--radius);
-		transition: color 0.15s, background 0.15s;
+		transition:
+			color 0.15s,
+			background 0.15s;
 	}
 
 	.nav-link:hover {

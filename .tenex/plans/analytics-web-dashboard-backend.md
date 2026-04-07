@@ -11,6 +11,7 @@ This plan defines the **backend/data access layer**: all server-side route handl
 The SQLite database at `~/.tenex/analysis.db` contains four telemetry tables:
 
 **`llm_requests`** (one row per API call to an LLM provider)
+
 - `id` (primary key, auto-increment)
 - `agent_slug` (string) — which TENEX agent made the request
 - `project_id` (string) — which project the agent belongs to
@@ -26,6 +27,7 @@ The SQLite database at `~/.tenex/analysis.db` contains four telemetry tables:
 - `timestamp` (datetime) — when the request occurred
 
 **`llm_request_messages`** (one row per message in an LLM request/response)
+
 - `id` (primary key, auto-increment)
 - `llm_request_id` (foreign key to llm_requests)
 - `role` (string) — "user", "assistant", "system", "tool"
@@ -34,6 +36,7 @@ The SQLite database at `~/.tenex/analysis.db` contains four telemetry tables:
 - `content_preview` (text) — first 500 chars of message content for inspection
 
 **`context_management_events`** (one row per context window management decision)
+
 - `id` (primary key, auto-increment)
 - `llm_request_id` (foreign key to llm_requests)
 - `strategy` (string) — pruning strategy applied ("summarize", "drop-oldest", "cache", etc.)
@@ -42,6 +45,7 @@ The SQLite database at `~/.tenex/analysis.db` contains four telemetry tables:
 - `utilization` (real) — percentage of context window used (0-100)
 
 **`message_carry_runs`** (one row per message carry/pruning session)
+
 - `id` (primary key, auto-increment)
 - `conversation_id` (string) — which conversation
 - `agent_slug` (string) — which agent performed the pruning
@@ -55,6 +59,7 @@ The SQLite database at `~/.tenex/analysis.db` contains four telemetry tables:
 ### API Contract
 
 The scaffolding plan establishes these API endpoints (routes):
+
 - `GET /api/telemetry/summary` — aggregated metrics
 - `GET /api/telemetry` — paginated telemetry data with filters
 - `GET /api/tokens` — token usage trends
@@ -70,11 +75,13 @@ This plan details each endpoint's query parameters, response schema, database qu
 The backend data access layer follows these principles:
 
 ### 1. **Singleton Database Connection**
+
 - Initialize a single better-sqlite3 connection in `src/lib/server/database.ts` at module load time
 - Reuse this connection across all API routes (no connection pooling needed; SQLite is single-writer)
 - Implement graceful shutdown and error recovery if database file is unavailable
 
 ### 2. **Type-Safe Query Builders**
+
 - Create utility functions in `src/lib/server/database.ts` for common query patterns:
   - Aggregations: `COUNT()`, `SUM()`, `AVG()`, `MIN()`, `MAX()`
   - Time-series: `GROUP BY` hour/day/week with COALESCE defaults
@@ -83,21 +90,25 @@ The backend data access layer follows these principles:
 - Export typed query functions that return strongly-typed results
 
 ### 3. **Prepared Statements**
+
 - All user-provided filters (dates, IDs, strings) are parameterized to prevent SQL injection
 - Statement caching via better-sqlite3's `.prepare()` with `.bind()` for repeated queries
 - No string concatenation for WHERE clauses; use `?` placeholders
 
 ### 4. **Validation & Filtering**
+
 - Use Zod schemas for all query parameter validation in route handlers
 - Reject invalid date ranges, out-of-range filters, and malformed IDs with 400 errors
 - Document all supported filters and their valid ranges in JSDoc comments
 
 ### 5. **Response Type Safety**
+
 - Define TypeScript interfaces in `src/lib/api/types.ts` for every API response
 - Database query functions return data that directly satisfies response interfaces
 - IDE type inference confirms response structure at compile time
 
 ### 6. **Performance-First Queries**
+
 - Minimize SELECT columns (don't fetch unused data)
 - Use database-level aggregations instead of in-memory looping
 - Add strategic indexes on frequently filtered columns (agent_slug, project_id, provider, timestamp)
@@ -105,12 +116,14 @@ The backend data access layer follows these principles:
 - Cache expensive time-series queries if same parameters are requested within 60 seconds
 
 ### 7. **Error Handling**
+
 - Distinguish HTTP error types (400 bad request, 404 not found, 500 server error)
 - Return structured error responses with actionable messages
 - Log database errors with context (query, parameters, error code) for debugging
 - Gracefully degrade if database is unavailable (return empty results with a warning header)
 
 ### 8. **No Data Mutation**
+
 - All routes are read-only; assert that the database is opened in read-only mode
 - This prevents accidental writes and makes the API safe for parallel requests
 
@@ -131,8 +144,9 @@ Push telemetry updates to the frontend as they arrive. Rejected for now because 
 ## File Changes
 
 ### `src/lib/server/database.ts`
+
 - **Action**: create
-- **What**: 
+- **What**:
   - Initialize better-sqlite3 connection with read-only mode
   - Path expansion for `~/.tenex/analysis.db` (handle tilde expansion on Windows/Mac/Linux)
   - Singleton pattern with module-level export
@@ -144,6 +158,7 @@ Push telemetry updates to the frontend as they arrive. Rejected for now because 
 - **Why**: Centralizes all database access; ensures type safety, parameterization, and consistent error handling
 
 ### `src/lib/server/validators.ts`
+
 - **Action**: create
 - **What**:
   - Zod schemas for common query parameters: DateRange, ProjectId, AgentSlug, Provider, Model, TimeFrame (hour/day/week), Pagination
@@ -155,6 +170,7 @@ Push telemetry updates to the frontend as they arrive. Rejected for now because 
 - **Why**: Centralized, reusable validation; prevents code duplication across route handlers
 
 ### `src/lib/api/types.ts` (MODIFY)
+
 - **Action**: modify (add to existing file from scaffolding)
 - **What**: Expand with backend-specific types:
   - `TelemetrySummaryResponse` — total input/output/cache tokens, cache hit rate, total cost, avg cost per request, request count, time range
@@ -170,6 +186,7 @@ Push telemetry updates to the frontend as they arrive. Rejected for now because 
 - **Why**: Ensures frontend and backend share consistent type definitions; IDE autocomplete confirms correct usage
 
 ### `src/routes/api/telemetry/+server.ts`
+
 - **Action**: create
 - **What**:
   - GET handler for `/api/telemetry`
@@ -181,6 +198,7 @@ Push telemetry updates to the frontend as they arrive. Rejected for now because 
 - **Why**: Provides full telemetry data with filtering and pagination; frontend uses this for drill-down views
 
 ### `src/routes/api/telemetry/summary/+server.ts`
+
 - **Action**: create
 - **What**:
   - GET handler for `/api/telemetry/summary`
@@ -193,6 +211,7 @@ Push telemetry updates to the frontend as they arrive. Rejected for now because 
 - **Why**: Powers dashboard summary cards; single aggregated query is fast even for large datasets
 
 ### `src/routes/api/tokens/+server.ts`
+
 - **Action**: create
 - **What**:
   - GET handler for `/api/tokens`
@@ -205,6 +224,7 @@ Push telemetry updates to the frontend as they arrive. Rejected for now because 
 - **Why**: Powers token usage chart; time-bucketing is database-efficient and avoids frontend aggregation
 
 ### `src/routes/api/cache/+server.ts`
+
 - **Action**: create
 - **What**:
   - GET handler for `/api/cache`
@@ -217,18 +237,20 @@ Push telemetry updates to the frontend as they arrive. Rejected for now because 
 - **Why**: Powers cache efficiency dashboard; groups by agent/provider/model for comparative analysis
 
 ### `src/routes/api/cost/+server.ts`
+
 - **Action**: create
 - **What**:
   - GET handler for `/api/cost`
   - Query parameters: `group_by` (agent | provider | model, default "provider"), `from`, `to`
   - Call `db.getCostBreakdown(filters, groupBy)` to aggregate costs per group
   - Return `CostBreakdownResponse` — array of { group_value, total_cost_usd, request_count, avg_cost_per_request, cost_percentage_of_total }
-  - Calculate percentage as: (group_cost / total_cost) * 100
+  - Calculate percentage as: (group_cost / total_cost) \* 100
   - Sort by total_cost descending
   - HTTP 400 for invalid group_by, 200 with empty array if no data
 - **Why**: Powers cost analysis dashboard; shows which agents/providers/models are most expensive
 
 ### `src/routes/api/conversations/[id]/+server.ts`
+
 - **Action**: create
 - **What**:
   - GET handler for `/api/conversations/:id`
@@ -241,6 +263,7 @@ Push telemetry updates to the frontend as they arrive. Rejected for now because 
 - **Why**: Powers conversation inspection view; shows full message history and context management events
 
 ### `src/routes/api/context-windows/+server.ts`
+
 - **Action**: create
 - **What**:
   - GET handler for `/api/context-windows`
@@ -255,6 +278,7 @@ Push telemetry updates to the frontend as they arrive. Rejected for now because 
 ### `src/lib/server/database.ts` — Query Functions (Detailed Implementation)
 
 #### `getTokenSummary(filters: Filters): TokenSummaryData`
+
 ```sql
 SELECT
   COUNT(*) as request_count,
@@ -269,10 +293,12 @@ SELECT
 FROM llm_requests
 WHERE [filters applied as AND conditions]
 ```
+
 - Filters: agent_slug, project_id, provider, model, date_range (WHERE timestamp >= from AND timestamp <= to)
 - All filters are optional; omit WHERE clause if no filters provided
 
 #### `getTokenTrends(filters: Filters, timeframe: "hour" | "day" | "week"): TokenTrendData[]`
+
 ```sql
 WITH time_buckets AS (
   SELECT
@@ -296,10 +322,12 @@ FROM time_buckets
 GROUP BY bucket
 ORDER BY bucket ASC
 ```
+
 - Fill gaps: if a bucket has no data, create a row with all tokens = 0 and request_count = 0
 - This prevents frontend charts from showing disconnected lines
 
 #### `getCacheMetrics(filters: Filters, groupBy: "agent" | "provider" | "model"): CacheMetricData[]`
+
 ```sql
 SELECT
   CASE
@@ -316,10 +344,12 @@ WHERE [filters applied]
 GROUP BY group_value
 ORDER BY cache_hit_rate DESC
 ```
+
 - cache_hit_rate is the percentage of input tokens that came from cache
 - NULLIF prevents division by zero; use 0.0 if denominator is zero
 
 #### `getCostBreakdown(filters: Filters, groupBy: "agent" | "provider" | "model"): CostBreakdownData[]`
+
 ```sql
 WITH costs AS (
   SELECT
@@ -349,6 +379,7 @@ ORDER BY total_cost_usd DESC
 ```
 
 #### `getTelemetryRecords(filters: Filters, limit: number, offset: number): TelemetryRecord[]`
+
 ```sql
 SELECT
   id, agent_slug, project_id, provider, model, conversation_id,
@@ -359,10 +390,12 @@ WHERE [filters applied]
 ORDER BY timestamp DESC
 LIMIT ? OFFSET ?
 ```
+
 - Always order by timestamp descending (newest first)
-- Pagination: limit defaults to 100, offset = (page - 1) * limit
+- Pagination: limit defaults to 100, offset = (page - 1) \* limit
 
 #### `getConversationDetails(conversationId: string): ConversationDetailData`
+
 ```sql
 SELECT
   r.id, r.timestamp, r.agent_slug, r.project_id, r.provider, r.model,
@@ -382,10 +415,12 @@ FROM llm_requests r
 WHERE r.conversation_id = ?
 ORDER BY r.timestamp ASC
 ```
+
 - Uses SQLite's `json_group_array()` and `json_object()` to build nested JSON structures
 - Returns one row per request; each row contains the messages and context events as JSON arrays
 
 #### `getContextWindowTrends(filters: Filters, threshold: number): ContextWindowTrendData[]`
+
 ```sql
 SELECT
   timestamp, agent_slug, provider, model, utilization as utilization_percentage,
@@ -395,6 +430,7 @@ INNER JOIN llm_requests ON context_management_events.llm_request_id = llm_reques
 WHERE context_management_events.utilization >= ? AND [filters applied]
 ORDER BY utilization DESC
 ```
+
 - filters apply to llm_requests table (agent_slug, provider, model, date_range)
 - threshold is a percentage (0-100); return only events >= threshold
 
@@ -415,6 +451,7 @@ CREATE INDEX idx_message_carry_runs_conversation_id ON message_carry_runs(conver
 ```
 
 **Rationale**:
+
 - timestamp DESC for sorting by recency (most queries want newest-first)
 - agent_slug, project_id, provider, model for WHERE clause filtering
 - conversation_id for detail view lookups
@@ -424,89 +461,102 @@ CREATE INDEX idx_message_carry_runs_conversation_id ON message_carry_runs(conver
 ## Execution Order
 
 ### 1. Create Database Module with Query Builders
-   - Create `src/lib/server/database.ts` with better-sqlite3 initialization
-   - Implement path expansion for `~/.tenex/analysis.db` (use `path.expandUser()` or equivalent)
-   - Implement `getTokenSummary()`, `getTokenTrends()`, `getCacheMetrics()`, `getCostBreakdown()`, `getTelemetryRecords()`, `getConversationDetails()`, `getContextWindowTrends()` functions
-   - Add error handling for missing/inaccessible database
-   - Verify: `node -e "const db = require('./src/lib/server/database.ts'); console.log(db.getTokenSummary())"` returns expected object structure (or empty object if no data)
+
+- Create `src/lib/server/database.ts` with better-sqlite3 initialization
+- Implement path expansion for `~/.tenex/analysis.db` (use `path.expandUser()` or equivalent)
+- Implement `getTokenSummary()`, `getTokenTrends()`, `getCacheMetrics()`, `getCostBreakdown()`, `getTelemetryRecords()`, `getConversationDetails()`, `getContextWindowTrends()` functions
+- Add error handling for missing/inaccessible database
+- Verify: `node -e "const db = require('./src/lib/server/database.ts'); console.log(db.getTokenSummary())"` returns expected object structure (or empty object if no data)
 
 ### 2. Create Validation Schemas
-   - Create `src/lib/server/validators.ts` with Zod schemas for all query parameters
-   - Implement: DateRange, ProjectId, AgentSlug, Provider, Model, TimeFrame, Pagination, and endpoint-specific filters
-   - Export validation helper functions
-   - Verify: `npm run build` compiles without TypeScript errors
+
+- Create `src/lib/server/validators.ts` with Zod schemas for all query parameters
+- Implement: DateRange, ProjectId, AgentSlug, Provider, Model, TimeFrame, Pagination, and endpoint-specific filters
+- Export validation helper functions
+- Verify: `npm run build` compiles without TypeScript errors
 
 ### 3. Expand Type Definitions
-   - Modify `src/lib/api/types.ts` to add all backend response types
-   - Ensure types match database query return values
-   - Add JSDoc comments explaining each type's purpose
-   - Verify: TypeScript type checking passes (`tsc --noEmit`)
+
+- Modify `src/lib/api/types.ts` to add all backend response types
+- Ensure types match database query return values
+- Add JSDoc comments explaining each type's purpose
+- Verify: TypeScript type checking passes (`tsc --noEmit`)
 
 ### 4. Create Telemetry Summary Endpoint
-   - Create `src/routes/api/telemetry/summary/+server.ts`
-   - Implement GET handler with query parameter validation
-   - Call `db.getTokenSummary(filters)` and return `TelemetrySummaryResponse`
-   - Add error handling and HTTP status codes
-   - Verify: `curl http://localhost:5173/api/telemetry/summary?from=2024-01-01&to=2024-01-31` returns valid JSON matching `TelemetrySummaryResponse` interface
+
+- Create `src/routes/api/telemetry/summary/+server.ts`
+- Implement GET handler with query parameter validation
+- Call `db.getTokenSummary(filters)` and return `TelemetrySummaryResponse`
+- Add error handling and HTTP status codes
+- Verify: `curl http://localhost:5173/api/telemetry/summary?from=2024-01-01&to=2024-01-31` returns valid JSON matching `TelemetrySummaryResponse` interface
 
 ### 5. Create Full Telemetry Endpoint
-   - Create `src/routes/api/telemetry/+server.ts`
-   - Implement GET handler with query parameters: project_id, agent_slug, provider, model, from, to, page, page_size
-   - Call `db.getTelemetryRecords(filters, limit, offset)` and return `TelemetryDataResponse`
-   - Include pagination metadata (page, page_size, total_count, has_next_page)
-   - Verify: `curl 'http://localhost:5173/api/telemetry?page=1&page_size=50'` returns paginated results
+
+- Create `src/routes/api/telemetry/+server.ts`
+- Implement GET handler with query parameters: project_id, agent_slug, provider, model, from, to, page, page_size
+- Call `db.getTelemetryRecords(filters, limit, offset)` and return `TelemetryDataResponse`
+- Include pagination metadata (page, page_size, total_count, has_next_page)
+- Verify: `curl 'http://localhost:5173/api/telemetry?page=1&page_size=50'` returns paginated results
 
 ### 6. Create Token Trends Endpoint
-   - Create `src/routes/api/tokens/+server.ts`
-   - Implement GET handler with query parameters: timeframe, project_id, agent_slug, provider, from, to
-   - Call `db.getTokenTrends(filters, timeframe)` and return `TokenTrendResponse`
-   - Ensure time gaps are filled with zero rows
-   - Verify: `curl 'http://localhost:5173/api/tokens?timeframe=day'` returns array with consistent 24-hour buckets
+
+- Create `src/routes/api/tokens/+server.ts`
+- Implement GET handler with query parameters: timeframe, project_id, agent_slug, provider, from, to
+- Call `db.getTokenTrends(filters, timeframe)` and return `TokenTrendResponse`
+- Ensure time gaps are filled with zero rows
+- Verify: `curl 'http://localhost:5173/api/tokens?timeframe=day'` returns array with consistent 24-hour buckets
 
 ### 7. Create Cache Metrics Endpoint
-   - Create `src/routes/api/cache/+server.ts`
-   - Implement GET handler with query parameters: group_by, from, to
-   - Call `db.getCacheMetrics(filters, groupBy)` and return `CacheMetricResponse`
-   - Verify: `curl 'http://localhost:5173/api/cache?group_by=provider'` returns metrics grouped by provider
+
+- Create `src/routes/api/cache/+server.ts`
+- Implement GET handler with query parameters: group_by, from, to
+- Call `db.getCacheMetrics(filters, groupBy)` and return `CacheMetricResponse`
+- Verify: `curl 'http://localhost:5173/api/cache?group_by=provider'` returns metrics grouped by provider
 
 ### 8. Create Cost Breakdown Endpoint
-   - Create `src/routes/api/cost/+server.ts`
-   - Implement GET handler with query parameters: group_by, from, to
-   - Call `db.getCostBreakdown(filters, groupBy)` and return `CostBreakdownResponse`
-   - Verify: `curl 'http://localhost:5173/api/cost?group_by=agent'` returns cost breakdown by agent
+
+- Create `src/routes/api/cost/+server.ts`
+- Implement GET handler with query parameters: group_by, from, to
+- Call `db.getCostBreakdown(filters, groupBy)` and return `CostBreakdownResponse`
+- Verify: `curl 'http://localhost:5173/api/cost?group_by=agent'` returns cost breakdown by agent
 
 ### 9. Create Conversation Detail Endpoint
-   - Create `src/routes/api/conversations/[id]/+server.ts`
-   - Implement GET handler with URL parameter: id (conversation_id)
-   - Call `db.getConversationDetails(id)` and return `ConversationDetailResponse`
-   - Handle missing conversations gracefully (404 or empty array)
-   - Verify: `curl 'http://localhost:5173/api/conversations/abc123'` returns conversation with messages and context events
+
+- Create `src/routes/api/conversations/[id]/+server.ts`
+- Implement GET handler with URL parameter: id (conversation_id)
+- Call `db.getConversationDetails(id)` and return `ConversationDetailResponse`
+- Handle missing conversations gracefully (404 or empty array)
+- Verify: `curl 'http://localhost:5173/api/conversations/abc123'` returns conversation with messages and context events
 
 ### 10. Create Context Window Endpoint
-   - Create `src/routes/api/context-windows/+server.ts`
-   - Implement GET handler with query parameters: threshold, from, to, agent_slug, provider, model
-   - Call `db.getContextWindowTrends(filters, threshold)` and return `ContextWindowTrendResponse`
-   - Verify: `curl 'http://localhost:5173/api/context-windows?threshold=80'` returns context events above 80% utilization
+
+- Create `src/routes/api/context-windows/+server.ts`
+- Implement GET handler with query parameters: threshold, from, to, agent_slug, provider, model
+- Call `db.getContextWindowTrends(filters, threshold)` and return `ContextWindowTrendResponse`
+- Verify: `curl 'http://localhost:5173/api/context-windows?threshold=80'` returns context events above 80% utilization
 
 ### 11. Test All Endpoints
-   - Create `src/routes/api/__tests__/endpoints.test.ts` with tests for each route
-   - Test valid queries, invalid filters, pagination, missing data scenarios
-   - Test error responses (400, 404, 500)
-   - Run `npm run test` and verify all tests pass
-   - Verify: `npm run test -- --coverage` shows >80% coverage of database query functions
+
+- Create `src/routes/api/__tests__/endpoints.test.ts` with tests for each route
+- Test valid queries, invalid filters, pagination, missing data scenarios
+- Test error responses (400, 404, 500)
+- Run `npm run test` and verify all tests pass
+- Verify: `npm run test -- --coverage` shows >80% coverage of database query functions
 
 ### 12. Performance Validation
-   - Insert 10,000+ mock rows into analysis.db (or use production data)
-   - Run each endpoint with large date ranges (full year)
-   - Verify response times are < 500ms (excluding network latency)
-   - Check that database indexes are being used (EXPLAIN QUERY PLAN in sqlite3 CLI)
-   - Add slow-query logging (queries > 500ms) to `src/lib/server/database.ts`
+
+- Insert 10,000+ mock rows into analysis.db (or use production data)
+- Run each endpoint with large date ranges (full year)
+- Verify response times are < 500ms (excluding network latency)
+- Check that database indexes are being used (EXPLAIN QUERY PLAN in sqlite3 CLI)
+- Add slow-query logging (queries > 500ms) to `src/lib/server/database.ts`
 
 ## Verification
 
 ### API Endpoint Contracts
 
 **All endpoints return responses matching TypeScript interfaces** (no type mismatches):
+
 - `curl http://localhost:5173/api/telemetry/summary` returns object matching `TelemetrySummaryResponse`
 - `curl http://localhost:5173/api/telemetry?page=1` returns object with `data: TelemetryRecord[]` and `pagination: PaginationMetadata`
 - `curl http://localhost:5173/api/tokens?timeframe=day` returns `TokenTrendResponse` array with consistent time buckets
@@ -544,4 +594,3 @@ CREATE INDEX idx_message_carry_runs_conversation_id ON message_carry_runs(conver
 - Database is opened in read-only mode (no accidental writes)
 - Foreign key constraints are respected (no orphaned references)
 - Date filtering works across timezones (use UTC for all timestamps)
-

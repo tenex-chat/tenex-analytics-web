@@ -1,11 +1,11 @@
 export const CHART_COLORS = {
-	primary: '#a1a1aa',    // zinc-400
-	secondary: '#71717a',  // zinc-500
-	tertiary: '#52525b',   // zinc-600
+	primary: '#a1a1aa', // zinc-400
+	secondary: '#71717a', // zinc-500
+	tertiary: '#52525b', // zinc-600
 	quaternary: '#3f3f46', // zinc-700
 	green: '#22c55e',
 	red: '#ef4444',
-	yellow: '#eab308',
+	yellow: '#eab308'
 };
 
 export const SERIES_COLORS = [
@@ -14,7 +14,7 @@ export const SERIES_COLORS = [
 	'#eab308', // yellow
 	'#f97316', // orange
 	'#ef4444', // red
-	'#71717a', // zinc-500
+	'#71717a' // zinc-500
 ];
 
 export function getChartTheme() {
@@ -24,7 +24,7 @@ export function getChartTheme() {
 		gridColor: '#27272a',
 		tooltipBackground: '#18181b',
 		tooltipBorder: '#27272a',
-		tooltipText: '#fafafa',
+		tooltipText: '#fafafa'
 	};
 }
 

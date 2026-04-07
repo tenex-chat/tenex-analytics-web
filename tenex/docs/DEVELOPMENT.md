@@ -46,14 +46,14 @@ Browser → SvelteKit server route → better-sqlite3 → ~/.tenex/analysis.db
 
 ### Key Directories
 
-| Path | Purpose |
-|------|---------|
-| `src/routes/api/` | Server-only SvelteKit route handlers; all SQLite queries happen here |
-| `src/lib/server/` | Server-only modules (database connection, query utilities) |
-| `src/lib/components/` | Reusable Svelte UI components |
-| `src/lib/stores/` | Svelte writable stores for client-side state |
-| `src/lib/api/` | Typed fetch wrapper and TypeScript interfaces for API responses |
-| `src/lib/utils/` | Pure utility functions (formatting, color palette) |
+| Path                  | Purpose                                                              |
+| --------------------- | -------------------------------------------------------------------- |
+| `src/routes/api/`     | Server-only SvelteKit route handlers; all SQLite queries happen here |
+| `src/lib/server/`     | Server-only modules (database connection, query utilities)           |
+| `src/lib/components/` | Reusable Svelte UI components                                        |
+| `src/lib/stores/`     | Svelte writable stores for client-side state                         |
+| `src/lib/api/`        | Typed fetch wrapper and TypeScript interfaces for API responses      |
+| `src/lib/utils/`      | Pure utility functions (formatting, color palette)                   |
 
 ### Server vs. Client Boundary
 
@@ -115,15 +115,16 @@ Query params: `from=YYYY-MM-DD`, `to=YYYY-MM-DD`
 ### `GET /api/telemetry/summary`
 
 Returns aggregated totals:
+
 ```json
 {
-  "totalInputTokens": 1234567,
-  "totalOutputTokens": 890123,
-  "totalCacheReadTokens": 456789,
-  "totalCacheWriteTokens": 123456,
-  "totalCostUsd": 12.34,
-  "requestCount": 42,
-  "cacheEfficiencyPct": 27.3
+	"totalInputTokens": 1234567,
+	"totalOutputTokens": 890123,
+	"totalCacheReadTokens": 456789,
+	"totalCacheWriteTokens": 123456,
+	"totalCostUsd": 12.34,
+	"requestCount": 42,
+	"cacheEfficiencyPct": 27.3
 }
 ```
 
@@ -162,12 +163,12 @@ Returns cache efficiency metrics grouped by model.
 
 ### File Naming
 
-| Type | Convention | Example |
-|------|-----------|---------|
-| Svelte components | PascalCase | `Card.svelte` |
-| TypeScript modules | camelCase | `database.ts`, `client.ts` |
-| SvelteKit routes | SvelteKit convention | `+page.svelte`, `+server.ts` |
-| Test files | `*.test.ts` | `utils.test.ts` |
+| Type               | Convention           | Example                      |
+| ------------------ | -------------------- | ---------------------------- |
+| Svelte components  | PascalCase           | `Card.svelte`                |
+| TypeScript modules | camelCase            | `database.ts`, `client.ts`   |
+| SvelteKit routes   | SvelteKit convention | `+page.svelte`, `+server.ts` |
+| Test files         | `*.test.ts`          | `utils.test.ts`              |
 
 ### Imports
 
@@ -202,11 +203,13 @@ npm run test
 ```
 
 The testing stack:
+
 - **Vitest** — test runner (Vite-aware, no separate config needed)
 - **@testing-library/svelte** — component testing
 - **happy-dom** — DOM implementation (faster than jsdom)
 
 Focus test coverage on:
+
 - Utility functions in `src/lib/utils/`
 - API type validation
 - Component rendering (happy path + error states)

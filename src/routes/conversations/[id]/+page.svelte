@@ -66,7 +66,7 @@
 		if (statsRes.status === 'fulfilled') {
 			try {
 				if (!statsRes.value.ok) throw new Error(`HTTP ${statsRes.value.status}`);
-				stats = await statsRes.value.json();
+				stats = (await statsRes.value.json()) as ConversationStats;
 			} catch (e) {
 				statsError = (e as Error).message;
 			}
@@ -102,53 +102,81 @@
 
 	// Each entry gets a short label like "#1", "#2", …
 	const chartData = $derived(
-		stats?.timeSeries.map((p, i) => ({
-			label: `#${i + 1}`,
-			// token breakdown
-			promptTokensSent: p.promptTokensSent,
-			tokensUsed: p.tokensUsed,
-			inputTokens: p.inputTokens,
-			outputTokens: p.outputTokens,
-			cacheReadTokens: p.cacheReadTokens,
-			cacheWriteTokens: p.cacheWriteTokens,
-			// per-role token breakdown (estimated tokens from llm_request_messages)
-			roleSystem: p.roleTokens?.system ?? 0,
-			roleUser: p.roleTokens?.user ?? 0,
-			roleAssistant: p.roleTokens?.assistant ?? 0,
-			roleTool: p.roleTokens?.tool ?? 0,
-			// messages
-			messageCount: p.messageCount,
-			// tool activity
-			toolCallsCount: p.toolCallsCount,
-			toolResultsCount: p.toolResultsCount,
-			toolCallsStripped: p.toolCallsStripped,
-			contextTokensSaved: p.contextTokensSaved,
-			// context pressure signals (0/1 bars for event markers)
-			contextManagementEvent: p.contextManagementEvent
-		})) ?? []
+		(stats as ConversationStats | null)?.timeSeries.map(
+			(
+				p: {
+					promptTokensSent: number;
+					tokensUsed: number;
+					inputTokens: number;
+					outputTokens: number;
+					cacheReadTokens: number;
+					cacheWriteTokens: number;
+					roleTokens?: { system?: number; user?: number; assistant?: number; tool?: number };
+					messageCount: number;
+					toolCallsCount: number;
+					toolResultsCount: number;
+					toolCallsStripped: number;
+					contextTokensSaved: number;
+					contextManagementEvent: number;
+				},
+				i: number
+			) => ({
+				label: `#${i + 1}`,
+				// token breakdown
+				promptTokensSent: p.promptTokensSent,
+				tokensUsed: p.tokensUsed,
+				inputTokens: p.inputTokens,
+				outputTokens: p.outputTokens,
+				cacheReadTokens: p.cacheReadTokens,
+				cacheWriteTokens: p.cacheWriteTokens,
+				// per-role token breakdown (estimated tokens from llm_request_messages)
+				roleSystem: p.roleTokens?.system ?? 0,
+				roleUser: p.roleTokens?.user ?? 0,
+				roleAssistant: p.roleTokens?.assistant ?? 0,
+				roleTool: p.roleTokens?.tool ?? 0,
+				// messages
+				messageCount: p.messageCount,
+				// tool activity
+				toolCallsCount: p.toolCallsCount,
+				toolResultsCount: p.toolResultsCount,
+				toolCallsStripped: p.toolCallsStripped,
+				contextTokensSaved: p.contextTokensSaved,
+				// context pressure signals (0/1 bars for event markers)
+				contextManagementEvent: p.contextManagementEvent
+			})
+		) ?? []
 	);
 
 	// Show token breakdown chart only when there's cache or split data worth showing
 	const hasTokenBreakdown = $derived(
-		stats?.timeSeries.some((p) => p.cacheReadTokens > 0 || p.cacheWriteTokens > 0) ?? false
+		(stats as ConversationStats | null)?.timeSeries.some(
+			(p: { cacheReadTokens: number; cacheWriteTokens: number }) =>
+				p.cacheReadTokens > 0 || p.cacheWriteTokens > 0
+		) ?? false
 	);
 
 	// Show context pressure chart only when there's something to show
 	const hasContextPressure = $derived(
-		stats
-			? stats.summary.requestsWithContextManagement > 0 ||
-					stats.summary.requestsWithToolTrimming > 0 ||
-					stats.summary.totalContextTokensSaved > 0
-			: false
+		(() => {
+			const s = stats as ConversationStats | null;
+			if (!s) return false;
+			return (
+				s.summary.requestsWithContextManagement > 0 ||
+				s.summary.requestsWithToolTrimming > 0 ||
+				s.summary.totalContextTokensSaved > 0
+			);
+		})()
 	);
 
 	// Show tool activity chart only when tool calls exist
-	const hasToolActivity = $derived((stats?.summary.totalToolCalls ?? 0) > 0);
+	const hasToolActivity = $derived(
+		((stats as ConversationStats | null)?.summary.totalToolCalls ?? 0) > 0
+	);
 
 	// Show cache chart only when cache data exists
 	const hasCacheData = $derived(
-		(stats?.summary.totalCacheReadTokens ?? 0) > 0 ||
-			(stats?.summary.totalCacheWriteTokens ?? 0) > 0
+		((stats as ConversationStats | null)?.summary.totalCacheReadTokens ?? 0) > 0 ||
+			((stats as ConversationStats | null)?.summary.totalCacheWriteTokens ?? 0) > 0
 	);
 
 	// Annotation markers for Chart 1 (Total Tokens per Request)

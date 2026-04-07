@@ -13,7 +13,15 @@
 
 	ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-	const { data = [], bars = [], xKey, height = 300, title = undefined, horizontal = false, stacked = false } = $props<{
+	const {
+		data = [],
+		bars = [],
+		xKey,
+		height = 300,
+		title = undefined,
+		horizontal = false,
+		stacked = false
+	} = $props<{
 		data?: Array<Record<string, number | string>>;
 		bars?: Array<{ key: string; label: string; color?: string }>;
 		xKey: string;
@@ -26,12 +34,12 @@
 	const theme = $derived(getChartTheme());
 
 	const chartData = $derived({
-		labels: data.map((d) => d[xKey] as string),
-		datasets: bars.map((bar, i) => {
+		labels: data.map((d: Record<string, number | string>) => d[xKey] as string),
+		datasets: bars.map((bar: { key: string; label: string; color?: string }, i: number) => {
 			const color = bar.color ?? SERIES_COLORS[i % SERIES_COLORS.length];
 			return {
 				label: bar.label,
-				data: data.map((d) => Number(d[bar.key]) || 0),
+				data: data.map((d: Record<string, number | string>) => Number(d[bar.key]) || 0),
 				backgroundColor: hexToRgba(color, 0.8),
 				borderColor: color,
 				borderWidth: 1,
@@ -87,11 +95,11 @@
 </script>
 
 {#if data.length === 0}
-	<div class="empty-state" style="height: {height}px">
+	<div class="empty-state" style:height="{height}px">
 		<p class="empty-text">No data available</p>
 	</div>
 {:else}
-	<div style="height: {height}px; position: relative;">
+	<div style:height="{height}px" style:position="relative">
 		<Bar data={chartData} {options} />
 	</div>
 {/if}

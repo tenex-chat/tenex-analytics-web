@@ -5,7 +5,9 @@ import { getDb } from '$lib/server/database.js';
 function hasTable(name: string): boolean {
 	try {
 		const db = getDb();
-		const row = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`).get(name);
+		const row = db
+			.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`)
+			.get(name);
 		return row !== undefined;
 	} catch {
 		return false;
@@ -50,7 +52,9 @@ function toTsv(rows: Row[]): string {
 function toCsv(rows: Row[]): string {
 	const escape = (v: string | number) => {
 		const s = String(v ?? '');
-		return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
+		return s.includes(',') || s.includes('"') || s.includes('\n')
+			? `"${s.replace(/"/g, '""')}"`
+			: s;
 	};
 	const header = COLUMNS.map(escape).join(',');
 	const lines = rows.map((r) => COLUMNS.map((c) => escape(r[c] ?? '')).join(','));
@@ -99,7 +103,9 @@ export const GET: RequestHandler = ({ url }) => {
 		const hasMsg = hasTable('llm_request_messages');
 
 		// Build the main aggregation query from llm_requests
-		const baseRows = db.prepare(`
+		const baseRows = db
+			.prepare(
+				`
 			SELECT
 				COALESCE(r.conversation_id, 'unknown') AS conversation_id,
 				COALESCE(r.project_id, 'unknown') AS project,
@@ -121,19 +127,25 @@ export const GET: RequestHandler = ({ url }) => {
 			GROUP BY r.conversation_id
 			ORDER BY started_at_ms DESC
 			LIMIT @limit
-		`).all({ ...params, limit: limitParam }) as Array<Record<string, unknown>>;
+		`
+			)
+			.all({ ...params, limit: limitParam }) as Array<Record<string, unknown>>;
 
 		// Fetch context management data if table exists
 		const cmeMap = new Map<string, { tool_uses_stripped: number; had_context_pressure: number }>();
 		if (hasCme) {
-			const cmeRows = db.prepare(`
+			const cmeRows = db
+				.prepare(
+					`
 				SELECT
 					COALESCE(conversation_id, 'unknown') AS conversation_id,
 					COALESCE(SUM(removed_tool_exchanges_total), 0) AS tool_uses_stripped,
 					1 AS had_context_pressure
 				FROM context_management_events
 				GROUP BY conversation_id
-			`).all() as Array<Record<string, unknown>>;
+			`
+				)
+				.all() as Array<Record<string, unknown>>;
 			for (const c of cmeRows) {
 				cmeMap.set(c.conversation_id as string, {
 					tool_uses_stripped: Number(c.tool_uses_stripped),
@@ -145,7 +157,9 @@ export const GET: RequestHandler = ({ url }) => {
 		// Fetch tool call counts from llm_request_messages if table exists
 		const toolCallMap = new Map<string, { total_tool_calls: number; message_count: number }>();
 		if (hasMsg) {
-			const toolRows = db.prepare(`
+			const toolRows = db
+				.prepare(
+					`
 				SELECT
 					COALESCE(r.conversation_id, 'unknown') AS conversation_id,
 					SUM(CASE WHEN m.role = 'assistant' AND m.classification = 'tool_call' THEN 1 ELSE 0 END) AS total_tool_calls,
@@ -153,7 +167,9 @@ export const GET: RequestHandler = ({ url }) => {
 				FROM llm_request_messages m
 				JOIN llm_requests r ON m.request_id = r.request_id
 				GROUP BY r.conversation_id
-			`).all() as Array<Record<string, unknown>>;
+			`
+				)
+				.all() as Array<Record<string, unknown>>;
 			for (const t of toolRows) {
 				toolCallMap.set(t.conversation_id as string, {
 					total_tool_calls: Number(t.total_tool_calls),
@@ -215,15 +231,21 @@ export const GET: RequestHandler = ({ url }) => {
 		});
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
-		return new Response(`# Error: ${msg}\n`, { status: 500, headers: { 'Content-Type': 'text/plain' } });
+		return new Response(`# Error: ${msg}\n`, {
+			status: 500,
+			headers: { 'Content-Type': 'text/plain' }
+		});
 	}
 };
 
 function respondEmpty(format: string): Response {
 	if (format === 'json') {
-		return new Response(JSON.stringify({ exportedAt: new Date().toISOString(), rows: [] }, null, 2), {
-			headers: { 'Content-Type': 'application/json' }
-		});
+		return new Response(
+			JSON.stringify({ exportedAt: new Date().toISOString(), rows: [] }, null, 2),
+			{
+				headers: { 'Content-Type': 'application/json' }
+			}
+		);
 	}
 	const ext = format === 'csv' ? 'csv' : 'tsv';
 	const mime = format === 'csv' ? 'text/csv' : 'text/tab-separated-values';

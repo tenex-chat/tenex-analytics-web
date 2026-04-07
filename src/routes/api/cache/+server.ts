@@ -35,23 +35,27 @@ export const GET: RequestHandler = ({ url }) => {
 		: 'WHERE ' + allConditions.join(' AND ');
 
 	// Overall totals
-	const overall = db.prepare(`
+	const overall = db
+		.prepare(
+			`
 		SELECT
 			COALESCE(SUM(input_cache_read_tokens), 0)   AS totalCacheReadTokens,
 			COALESCE(SUM(input_cache_write_tokens), 0)  AS totalCacheWriteTokens,
 			COALESCE(SUM(input_tokens), 0)              AS totalInputTokens
 		FROM llm_requests
 		${statusClause}
-	`).get(params) as Record<string, number>;
+	`
+		)
+		.get(params) as Record<string, number>;
 
 	const cacheRead = Number(overall.totalCacheReadTokens);
 	const input = Number(overall.totalInputTokens);
-	const efficiencyPercent = input > 0
-		? Math.round((cacheRead / input) * 10000) / 100
-		: 0;
+	const efficiencyPercent = input > 0 ? Math.round((cacheRead / input) * 10000) / 100 : 0;
 
 	// By model
-	const byModelRows = db.prepare(`
+	const byModelRows = db
+		.prepare(
+			`
 		SELECT
 			COALESCE(model, 'unknown')                  AS label,
 			COALESCE(SUM(input_cache_read_tokens), 0)   AS cacheReadTokens,
@@ -62,10 +66,14 @@ export const GET: RequestHandler = ({ url }) => {
 		${statusClause}
 		GROUP BY model
 		ORDER BY cacheReadTokens DESC
-	`).all(params) as Array<Record<string, number | string>>;
+	`
+		)
+		.all(params) as Array<Record<string, number | string>>;
 
 	// By day
-	const byDayRows = db.prepare(`
+	const byDayRows = db
+		.prepare(
+			`
 		SELECT
 			date(started_at_ms/1000, 'unixepoch')       AS label,
 			COALESCE(SUM(input_cache_read_tokens), 0)   AS cacheReadTokens,
@@ -76,7 +84,9 @@ export const GET: RequestHandler = ({ url }) => {
 		${statusClause}
 		GROUP BY date(started_at_ms/1000, 'unixepoch')
 		ORDER BY label ASC
-	`).all(params) as Array<Record<string, number | string>>;
+	`
+		)
+		.all(params) as Array<Record<string, number | string>>;
 
 	function toPoint(r: Record<string, number | string>) {
 		const cr = Number(r.cacheReadTokens);

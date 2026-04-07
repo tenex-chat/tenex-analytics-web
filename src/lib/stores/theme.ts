@@ -5,11 +5,10 @@ import { browser } from '$app/environment';
 export type Theme = 'dark' | 'light';
 
 function createThemeStore() {
-	const initial: Theme =
-		browser
-			? ((localStorage.getItem('theme') as Theme) ??
-					(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'))
-			: 'dark';
+	const initial: Theme = browser
+		? ((localStorage.getItem('theme') as Theme) ??
+			(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'))
+		: 'dark';
 
 	const { subscribe, set, update } = writable<Theme>(initial);
 

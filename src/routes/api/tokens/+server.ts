@@ -38,7 +38,9 @@ export const GET: RequestHandler = ({ url }) => {
 				? "strftime('%Y-W%W', started_at_ms/1000, 'unixepoch')"
 				: "date(started_at_ms/1000, 'unixepoch')";
 
-	const rows = db.prepare(`
+	const rows = db
+		.prepare(
+			`
 		SELECT
 			${groupExpr}                                        AS date,
 			COALESCE(SUM(input_tokens), 0)                      AS inputTokens,
@@ -51,7 +53,9 @@ export const GET: RequestHandler = ({ url }) => {
 		${statusClause}
 		GROUP BY ${groupExpr}
 		ORDER BY date ASC
-	`).all(params) as Array<Record<string, number | string>>;
+	`
+		)
+		.all(params) as Array<Record<string, number | string>>;
 
 	return json({
 		granularity,

@@ -3,8 +3,21 @@
 	import { filterParams } from '$lib/stores/filters.js';
 	import { formatPercent } from '$lib/utils/format.js';
 
-	interface AgentSummary { agentSlug: string; avgUtilization: number; maxUtilization: number; pruneCount: number; }
-	interface ContextEvent { timestamp: string; agentSlug: string; model: string; tokensBefore: number; tokensAfter: number; utilization: number; strategy: string; }
+	interface AgentSummary {
+		agentSlug: string;
+		avgUtilization: number;
+		maxUtilization: number;
+		pruneCount: number;
+	}
+	interface ContextEvent {
+		timestamp: string;
+		agentSlug: string;
+		model: string;
+		tokensBefore: number;
+		tokensAfter: number;
+		utilization: number;
+		strategy: string;
+	}
 
 	let byAgent: AgentSummary[] = $state([]);
 	let events: ContextEvent[] = $state([]);
@@ -75,7 +88,11 @@
 							<tr>
 								<td>{a.agentSlug}</td>
 								<td class="num">{formatPercent(a.avgUtilization)}</td>
-								<td class="num" class:high={a.maxUtilization > 80} class:warn={a.maxUtilization > 60 && a.maxUtilization <= 80}>
+								<td
+									class="num"
+									class:high={a.maxUtilization > 80}
+									class:warn={a.maxUtilization > 60 && a.maxUtilization <= 80}
+								>
 									{formatPercent(a.maxUtilization)}
 								</td>
 								<td class="num">{a.pruneCount}</td>
@@ -124,28 +141,109 @@
 </div>
 
 <style>
-	.page { display: flex; flex-direction: column; gap: 1.5rem; }
-	.page-title { font-size: 1.5rem; font-weight: 700; color: var(--text); }
+	.page {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+	}
+	.page-title {
+		font-size: 1.5rem;
+		font-weight: 700;
+		color: var(--text);
+	}
 
 	/* Metrics strip */
-	.metrics { display: flex; margin: 0; padding: 0; list-style: none; flex-wrap: wrap; }
-	.metric { flex: 1; min-width: 140px; padding: 0 24px; border-right: 1px solid var(--border); }
-	.metric:first-child { padding-left: 0; }
-	.metric.last { border-right: none; }
-	.metric dt { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 6px; }
-	.metric dd { font-size: 24px; font-weight: 600; color: var(--text); line-height: 1; margin: 0; }
-	.metric dd.accent-red { color: var(--red); }
+	.metrics {
+		display: flex;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		flex-wrap: wrap;
+	}
+	.metric {
+		flex: 1;
+		min-width: 140px;
+		padding: 0 24px;
+		border-right: 1px solid var(--border);
+	}
+	.metric:first-child {
+		padding-left: 0;
+	}
+	.metric.last {
+		border-right: none;
+	}
+	.metric dt {
+		font-size: 11px;
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--muted);
+		margin-bottom: 6px;
+	}
+	.metric dd {
+		font-size: 24px;
+		font-weight: 600;
+		color: var(--text);
+		line-height: 1;
+		margin: 0;
+	}
+	.metric dd.accent-red {
+		color: var(--red);
+	}
 
-	.table-wrap { overflow-x: auto; }
-	.data-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
-	.data-table th { text-align: left; padding: 0.5rem 0.75rem; color: var(--muted); border-bottom: 1px solid var(--border); font-weight: 500; }
-	.data-table td { padding: 0.5rem 0.75rem; color: var(--text); border-bottom: 1px solid var(--border); }
-	.data-table tr:last-child td { border-bottom: none; }
-	.num { text-align: right; }
-	.high { color: var(--red); font-weight: 600; }
-	.warn { color: var(--yellow, #eab308); font-weight: 600; }
-	.mono { font-family: monospace; font-size: 0.75rem; }
-	.model { font-size: 0.75rem; color: var(--muted); }
-	.empty { color: var(--muted); font-size: 0.875rem; padding: 1rem 0; }
-	.error-banner { background: var(--surface); border: 1px solid var(--red); color: var(--red); padding: 0.75rem 1rem; border-radius: var(--radius); font-size: 0.875rem; }
+	.table-wrap {
+		overflow-x: auto;
+	}
+	.data-table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 0.8125rem;
+	}
+	.data-table th {
+		text-align: left;
+		padding: 0.5rem 0.75rem;
+		color: var(--muted);
+		border-bottom: 1px solid var(--border);
+		font-weight: 500;
+	}
+	.data-table td {
+		padding: 0.5rem 0.75rem;
+		color: var(--text);
+		border-bottom: 1px solid var(--border);
+	}
+	.data-table tr:last-child td {
+		border-bottom: none;
+	}
+	.num {
+		text-align: right;
+	}
+	.high {
+		color: var(--red);
+		font-weight: 600;
+	}
+	.warn {
+		color: var(--yellow, #eab308);
+		font-weight: 600;
+	}
+	.mono {
+		font-family: monospace;
+		font-size: 0.75rem;
+	}
+	.model {
+		font-size: 0.75rem;
+		color: var(--muted);
+	}
+	.empty {
+		color: var(--muted);
+		font-size: 0.875rem;
+		padding: 1rem 0;
+	}
+	.error-banner {
+		background: var(--surface);
+		border: 1px solid var(--red);
+		color: var(--red);
+		padding: 0.75rem 1rem;
+		border-radius: var(--radius);
+		font-size: 0.875rem;
+	}
 </style>

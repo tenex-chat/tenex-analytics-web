@@ -49,22 +49,20 @@ module.exports = {
 			'error',
 			{
 				selector: "CallExpression[callee.name='onMount']",
-				message: "onMount is Svelte 4. Use $effect() instead: $effect(() => { /* setup */ })"
+				message: 'onMount is Svelte 4. Use $effect() instead: $effect(() => { /* setup */ })'
 			},
 			{
 				selector: "CallExpression[callee.name='onDestroy']",
 				message:
-					"onDestroy is Svelte 4. Use $effect cleanup: $effect(() => { return () => { /* cleanup */ } })"
+					'onDestroy is Svelte 4. Use $effect cleanup: $effect(() => { return () => { /* cleanup */ } })'
 			},
 			{
 				selector: "CallExpression[callee.name='beforeUpdate']",
-				message:
-					'beforeUpdate is Svelte 4. Use $effect() for reactive updates instead'
+				message: 'beforeUpdate is Svelte 4. Use $effect() for reactive updates instead'
 			},
 			{
 				selector: "CallExpression[callee.name='afterUpdate']",
-				message:
-					'afterUpdate is Svelte 4. Use $effect() with proper dependency tracking instead'
+				message: 'afterUpdate is Svelte 4. Use $effect() with proper dependency tracking instead'
 			}
 		],
 

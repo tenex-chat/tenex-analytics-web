@@ -6,7 +6,9 @@ import { getDb } from '$lib/server/database.js';
 function hasTable(name: string): boolean {
 	try {
 		const db = getDb();
-		const row = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`).get(name);
+		const row = db
+			.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`)
+			.get(name);
 		return row !== undefined;
 	} catch {
 		return false;
@@ -45,7 +47,9 @@ function toTsv(rows: Row[]): string {
 function toCsv(rows: Row[]): string {
 	const escape = (v: string | number) => {
 		const s = String(v ?? '');
-		return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
+		return s.includes(',') || s.includes('"') || s.includes('\n')
+			? `"${s.replace(/"/g, '""')}"`
+			: s;
 	};
 	const header = COLUMNS.map(escape).join(',');
 	const lines = rows.map((r) => COLUMNS.map((c) => escape(r[c] ?? '')).join(','));
@@ -65,14 +69,18 @@ export const GET: RequestHandler = ({ params, url }) => {
 
 		// Verify the conversation exists
 		const exists = db
-			.prepare(`SELECT 1 FROM llm_requests WHERE conversation_id = @conversationId AND status = 'success' LIMIT 1`)
+			.prepare(
+				`SELECT 1 FROM llm_requests WHERE conversation_id = @conversationId AND status = 'success' LIMIT 1`
+			)
 			.get({ conversationId });
 
 		if (!exists) {
 			throw error(404, `Conversation not found: ${conversationId}`);
 		}
 
-		const requestRows = db.prepare(`
+		const requestRows = db
+			.prepare(
+				`
 			SELECT
 				ROW_NUMBER() OVER (ORDER BY started_at_ms ASC) AS request_index,
 				started_at_ms,
@@ -87,7 +95,9 @@ export const GET: RequestHandler = ({ params, url }) => {
 			FROM llm_requests
 			WHERE conversation_id = @conversationId AND status = 'success'
 			ORDER BY started_at_ms ASC
-		`).all({ conversationId }) as Array<Record<string, unknown>>;
+		`
+			)
+			.all({ conversationId }) as Array<Record<string, unknown>>;
 
 		const hasMsg = hasTable('llm_request_messages');
 		const hasCme = hasTable('context_management_events');
@@ -95,7 +105,9 @@ export const GET: RequestHandler = ({ params, url }) => {
 		// Per-request message and tool-call counts
 		const msgMap = new Map<string, { message_count: number; tool_calls_count: number }>();
 		if (hasMsg) {
-			const msgRows = db.prepare(`
+			const msgRows = db
+				.prepare(
+					`
 				SELECT
 					request_id,
 					COUNT(*) AS message_count,
@@ -106,7 +118,9 @@ export const GET: RequestHandler = ({ params, url }) => {
 					WHERE conversation_id = @conversationId AND status = 'success'
 				)
 				GROUP BY request_id
-			`).all({ conversationId }) as Array<Record<string, unknown>>;
+			`
+				)
+				.all({ conversationId }) as Array<Record<string, unknown>>;
 			for (const m of msgRows) {
 				msgMap.set(m.request_id as string, {
 					message_count: Number(m.message_count),
@@ -123,14 +137,18 @@ export const GET: RequestHandler = ({ params, url }) => {
 		const cmeByWindow = new Map<string, number>();
 		if (hasCme) {
 			// Fetch all cme events for this conversation ordered by time
-			const cmeRows = db.prepare(`
+			const cmeRows = db
+				.prepare(
+					`
 				SELECT
 					COALESCE(removed_tool_exchanges_total, 0) AS stripped,
 					created_at_ms
 				FROM context_management_events
 				WHERE conversation_id = @conversationId
 				ORDER BY created_at_ms ASC
-			`).all({ conversationId }) as Array<Record<string, unknown>>;
+			`
+				)
+				.all({ conversationId }) as Array<Record<string, unknown>>;
 
 			if (cmeRows.length > 0) {
 				// Assign each CME event's stripped count to the nearest preceding request
@@ -208,6 +226,9 @@ export const GET: RequestHandler = ({ params, url }) => {
 		// Re-throw SvelteKit errors (404 etc.)
 		if (err && typeof err === 'object' && 'status' in err) throw err;
 		const msg = err instanceof Error ? err.message : String(err);
-		return new Response(`# Error: ${msg}\n`, { status: 500, headers: { 'Content-Type': 'text/plain' } });
+		return new Response(`# Error: ${msg}\n`, {
+			status: 500,
+			headers: { 'Content-Type': 'text/plain' }
+		});
 	}
 };

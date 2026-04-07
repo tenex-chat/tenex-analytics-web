@@ -8,17 +8,17 @@ This app uses a **minimalist, shadcn-inspired UI** with a pure zinc/charcoal pal
 
 ### CSS variables — use these exclusively
 
-| Variable | Value | Purpose |
-|---|---|---|
-| `--bg` | `#09090b` | Page background |
+| Variable    | Value     | Purpose                        |
+| ----------- | --------- | ------------------------------ |
+| `--bg`      | `#09090b` | Page background                |
 | `--surface` | `#18181b` | Subtle surface (cards, panels) |
-| `--border` | `#27272a` | All borders |
-| `--text` | `#fafafa` | Primary text |
-| `--muted` | `#a1a1aa` | Secondary / muted text |
-| `--dim` | `#52525b` | Labels, very dim text |
-| `--radius` | `6px` | Border radius |
-| `--green` | `#22c55e` | Success / positive |
-| `--red` | `#ef4444` | Error / negative |
+| `--border`  | `#27272a` | All borders                    |
+| `--text`    | `#fafafa` | Primary text                   |
+| `--muted`   | `#a1a1aa` | Secondary / muted text         |
+| `--dim`     | `#52525b` | Labels, very dim text          |
+| `--radius`  | `6px`     | Border radius                  |
+| `--green`   | `#22c55e` | Success / positive             |
+| `--red`     | `#ef4444` | Error / negative               |
 
 ### ❌ Never use `*-gray-*` Tailwind classes
 
@@ -66,13 +66,13 @@ That's it — no container, no SSH, just a local build + service restart.
 
 ### Relevant files
 
-| File | Purpose |
-|---|---|
-| `build/index.js` | Production server entry point (generated, gitignored) |
+| File                                                  | Purpose                                                     |
+| ----------------------------------------------------- | ----------------------------------------------------------- |
+| `build/index.js`                                      | Production server entry point (generated, gitignored)       |
 | `~/Library/LaunchAgents/io.f7z.tenex-analytics.plist` | launchd service definition (PORT=3000, NODE_ENV=production) |
-| `$(brew --prefix)/etc/Caddyfile` | Caddy reverse proxy config |
-| `~/Library/Logs/tenex-analytics.log` | stdout log |
-| `~/Library/Logs/tenex-analytics-error.log` | stderr log |
+| `$(brew --prefix)/etc/Caddyfile`                      | Caddy reverse proxy config                                  |
+| `~/Library/Logs/tenex-analytics.log`                  | stdout log                                                  |
+| `~/Library/Logs/tenex-analytics-error.log`            | stderr log                                                  |
 
 ### Caddy config (for reference)
 

@@ -2,7 +2,7 @@
 
 **Status:** Phase 1 (Scaffolding) complete. Phase 2 (UI implementation) pending.  
 **Last updated:** 2026-04-01  
-**Owner:** Pablo  
+**Owner:** Pablo
 
 ---
 
@@ -22,12 +22,12 @@ This is a dev/ops tool, not a public product. Aesthetic: minimal, dark-first, in
 
 ### Core Tables
 
-| Table | Key Columns | Purpose |
-|-------|-------------|---------|
-| `llm_requests` | `agent_slug`, `project_id`, `provider`, `model`, `conversation_id`, `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_write_tokens`, `cost_usd`, `duration_ms`, `timestamp` | One row per LLM API call |
-| `llm_request_messages` | `role`, `classification` (system/user/tool-call/tool-result), `token_count`, `content_preview` | Individual messages within a request |
-| `context_management_events` | `strategy`, `tokens_before`, `tokens_after`, `utilization` | When context manager fires |
-| `message_carry_runs` | *(carry/pruning metadata)* | Message carry & pruning state |
+| Table                       | Key Columns                                                                                                                                                                            | Purpose                              |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| `llm_requests`              | `agent_slug`, `project_id`, `provider`, `model`, `conversation_id`, `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_write_tokens`, `cost_usd`, `duration_ms`, `timestamp` | One row per LLM API call             |
+| `llm_request_messages`      | `role`, `classification` (system/user/tool-call/tool-result), `token_count`, `content_preview`                                                                                         | Individual messages within a request |
+| `context_management_events` | `strategy`, `tokens_before`, `tokens_after`, `utilization`                                                                                                                             | When context manager fires           |
+| `message_carry_runs`        | _(carry/pruning metadata)_                                                                                                                                                             | Message carry & pruning state        |
 
 **Path override:** Set `TENEX_DB_PATH` env var to point to a different database file.
 
@@ -36,7 +36,9 @@ This is a dev/ops tool, not a public product. Aesthetic: minimal, dark-first, in
 ## 3. What It Does (Feature Set)
 
 ### 3.1 Dashboard Overview (Phase 2 — next)
+
 Homepage with key metrics at a glance:
+
 - **Total tokens** (input + output breakdown)
 - **Cache efficiency %** (cache read / total input × 100)
 - **Total cost USD**
@@ -45,41 +47,53 @@ Homepage with key metrics at a glance:
 - Charts: token usage over time (line), cache performance by model (bar)
 
 ### 3.2 Token Analysis Page (`/tokens`)
+
 Drill-down into token usage:
+
 - Time-series chart: input/output/cache-read/cache-write over time
 - Group-by: hour / day / week
 - Filter: project, agent, provider, model, date range
 - Table: per-agent token breakdown
 
 ### 3.3 Cache Efficiency Page (`/cache`)
+
 Cache hit rates and trends:
+
 - Cache efficiency % by agent, provider, model
 - Read vs write token ratio over time
 - Heatmap or bar: which agents/models benefit most from caching
 
 ### 3.4 Cost Trends Page (`/costs`)
+
 Cost breakdown:
+
 - Total cost over time (line chart)
 - Cost by: project, agent, provider, model (bar/pie)
 - Most expensive agents/conversations
 - Running daily/weekly totals
 
 ### 3.5 Context Window Pressure Page (`/context-windows`)
+
 Agents approaching limits:
+
 - Utilization trend per agent (line chart)
 - Alert threshold: flag agents >80% utilization
 - Context management events (when/how often pruning fires)
 - Tokens before vs after pruning
 
 ### 3.6 Conversation Inspector (`/conversations/[id]`)
+
 Per-conversation deep dive:
+
 - Message sequence with role/classification and token count per message
 - Token distribution: how much is system prompt vs user vs tool results
 - Context window fill over the conversation's lifetime
 - Cross-reference with Jaeger/telemetry URLs (if available)
 
 ### 3.7 Global Filters
+
 Persistent filter bar applied across all pages:
+
 - Project, agent slug, provider, model, date range
 - State synced to URL query params (deep-linkable, refreshable)
 - 300ms debounce on filter changes
@@ -88,15 +102,15 @@ Persistent filter bar applied across all pages:
 
 ## 4. Tech Stack
 
-| Layer | Choice | Rationale |
-|-------|--------|-----------|
-| Framework | SvelteKit v2 (Svelte 5) | Pablo's stack |
-| Database | `better-sqlite3` (server-only) | Direct file access, no server needed |
-| Charts | Recharts v2 | Svelte-compatible, good defaults |
-| Styling | Tailwind CSS v3 + CSS custom properties | Dark mode via `dark:` classes |
-| State | Native Svelte stores | No external lib, sufficient for scope |
-| Testing | Vitest + @testing-library/svelte | Vite-native, ecosystem fit |
-| TypeScript | Strict mode | Type safety across server/client boundary |
+| Layer      | Choice                                  | Rationale                                 |
+| ---------- | --------------------------------------- | ----------------------------------------- |
+| Framework  | SvelteKit v2 (Svelte 5)                 | Pablo's stack                             |
+| Database   | `better-sqlite3` (server-only)          | Direct file access, no server needed      |
+| Charts     | Recharts v2                             | Svelte-compatible, good defaults          |
+| Styling    | Tailwind CSS v3 + CSS custom properties | Dark mode via `dark:` classes             |
+| State      | Native Svelte stores                    | No external lib, sufficient for scope     |
+| Testing    | Vitest + @testing-library/svelte        | Vite-native, ecosystem fit                |
+| TypeScript | Strict mode                             | Type safety across server/client boundary |
 
 **No Nostr/NDK.** No external APIs. No cloud dependencies.
 
@@ -116,26 +130,26 @@ Browser  →  SvelteKit client  →  SvelteKit server routes  →  better-sqlite
 
 ### API Endpoints (planned — Phase 2)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/telemetry/summary` | Aggregate totals (tokens, cost, cache %) |
-| GET | `/api/telemetry` | Paginated rows, multi-dim filter |
-| GET | `/api/tokens` | Time-series token trends (hourly/daily/weekly) |
-| GET | `/api/cache` | Cache efficiency by agent/provider/model |
-| GET | `/api/cost` | Cost breakdown by dimension |
-| GET | `/api/conversations/:id` | Conversation inspection with messages |
-| GET | `/api/context-windows` | Utilization trends + threshold alerts |
+| Method | Endpoint                 | Description                                    |
+| ------ | ------------------------ | ---------------------------------------------- |
+| GET    | `/api/telemetry/summary` | Aggregate totals (tokens, cost, cache %)       |
+| GET    | `/api/telemetry`         | Paginated rows, multi-dim filter               |
+| GET    | `/api/tokens`            | Time-series token trends (hourly/daily/weekly) |
+| GET    | `/api/cache`             | Cache efficiency by agent/provider/model       |
+| GET    | `/api/cost`              | Cost breakdown by dimension                    |
+| GET    | `/api/conversations/:id` | Conversation inspection with messages          |
+| GET    | `/api/context-windows`   | Utilization trends + threshold alerts          |
 
 All endpoints accept: `?from=YYYY-MM-DD&to=YYYY-MM-DD&agent=<slug>&project=<id>&provider=<name>&model=<name>`
 
 ### Current API Endpoints (Phase 1 — implemented)
 
-| Endpoint | File | Status |
-|----------|------|--------|
-| `/api/telemetry/summary` | `src/routes/api/telemetry/summary/+server.ts` | ✅ |
-| `/api/telemetry` | `src/routes/api/telemetry/+server.ts` | ✅ |
-| `/api/tokens` | `src/routes/api/tokens/+server.ts` | ✅ |
-| `/api/cache` | `src/routes/api/cache/+server.ts` | ✅ |
+| Endpoint                 | File                                          | Status |
+| ------------------------ | --------------------------------------------- | ------ |
+| `/api/telemetry/summary` | `src/routes/api/telemetry/summary/+server.ts` | ✅     |
+| `/api/telemetry`         | `src/routes/api/telemetry/+server.ts`         | ✅     |
+| `/api/tokens`            | `src/routes/api/tokens/+server.ts`            | ✅     |
+| `/api/cache`             | `src/routes/api/cache/+server.ts`             | ✅     |
 
 ---
 
@@ -213,6 +227,6 @@ The next thing to build is the full UI layer:
 9. **Auto-refresh** — polling every N seconds (configurable)
 
 Implementation should follow the detailed plans in:
+
 - `.tenex/plans/analytics-web-dashboard-frontend.md`
 - `.tenex/plans/analytics-web-dashboard-backend.md`
-

@@ -6,7 +6,9 @@ import { getDb } from '$lib/server/database.js';
 function hasTable(name: string): boolean {
 	try {
 		const db = getDb();
-		const row = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`).get(name);
+		const row = db
+			.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`)
+			.get(name);
 		return row !== undefined;
 	} catch {
 		return false;
@@ -38,7 +40,10 @@ export const GET: RequestHandler = ({ url }) => {
 		const db = getDb();
 		const { clause, params } = buildMsFilter(url);
 
-		const conversations = (db.prepare(`
+		const conversations = (
+			db
+				.prepare(
+					`
 			SELECT
 				COALESCE(conversation_id, 'unknown') AS conversationId,
 				COALESCE(agent_slug, 'unknown') AS agentSlug,
@@ -53,7 +58,10 @@ export const GET: RequestHandler = ({ url }) => {
 			${clause}
 			GROUP BY conversation_id
 			ORDER BY lastTimestampMs DESC
-		`).all(params) as Record<string, unknown>[]).map((r) => {
+		`
+				)
+				.all(params) as Record<string, unknown>[]
+		).map((r) => {
 			const cacheRead = Number(r.cacheReadTokens);
 			const inputTok = Number(r.inputTokens);
 			const cacheEfficiency = inputTok > 0 ? Math.round((cacheRead / inputTok) * 10000) / 100 : 0;

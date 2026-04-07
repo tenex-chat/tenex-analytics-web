@@ -42,7 +42,16 @@ export function presetToDates(preset: Exclude<TimePreset, 'custom'>): { from: Da
 
 function makeDefault(): FilterState {
 	const { from, to } = presetToDates('30d');
-	return { from, to, preset: '30d', project: null, agent: null, provider: null, model: null, apiKey: null };
+	return {
+		from,
+		to,
+		preset: '30d',
+		project: null,
+		agent: null,
+		provider: null,
+		model: null,
+		apiKey: null
+	};
 }
 
 function createFiltersStore() {

@@ -134,7 +134,13 @@ export function parseEntityFilters(url: URL): EntityFilters {
  */
 export function buildEntityFilter(
 	filters: EntityFilters,
-	columns: { model?: string; agent?: string; project?: string; provider?: string; apiKey?: string } = {}
+	columns: {
+		model?: string;
+		agent?: string;
+		project?: string;
+		provider?: string;
+		apiKey?: string;
+	} = {}
 ): { conditions: string[]; params: Record<string, string> } {
 	const conditions: string[] = [];
 	const params: Record<string, string> = {};

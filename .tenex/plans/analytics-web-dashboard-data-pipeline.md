@@ -25,6 +25,7 @@ This plan establishes a **multi-layered data pipeline** with clear separation of
 6. **Resilience** — error recovery, graceful degradation, monitoring
 
 This approach prioritizes:
+
 - **Fast initial page load** via SvelteKit `load` functions (server-side rendering)
 - **Snappy filter interactions** via cached Svelte stores with smart revalidation
 - **No memory leaks** through explicit cache eviction and connection cleanup
@@ -33,25 +34,31 @@ This approach prioritizes:
 ### Alternatives Considered
 
 **Option A: GraphQL with Apollo Client**
+
 - Rejected: Adds complexity for a local, single-user tool. Better-suited for multi-user APIs.
 
 **Option B: Pre-computed aggregations (hourly rollups stored in separate tables)**
+
 - Rejected: Over-engineered for the current use case. On-demand aggregation is adequate given local disk I/O speed.
 
 **Option C: WebSocket with server-pushed updates**
+
 - Deferred: Lower priority. Polling is sufficient. WebSocket can be added later if needed.
 
 **Option D: IndexedDB-based local cache**
+
 - Rejected: SQLite is the source of truth; local browser cache adds complexity without significant benefit.
 
 ## File Changes
 
 ### `src/lib/server/database.ts` — Database Connection Singleton
+
 - **Action**: Create
 - **What**: Establish and manage a single persistent `better-sqlite3` connection to `~/.tenex/analysis.db`. Provide helper methods for common queries (with caching support indicators).
 - **Why**: A singleton connection prevents resource leaks, simplifies error handling, and centralizes database access patterns. This is the foundation for all data fetching.
 
 ### `src/lib/server/query-service.ts` — Query Service Wrapper
+
 - **Action**: Create
 - **What**: Wrap the database connection with type-safe, reusable query methods. Expose methods like `getUsageTotals()`, `getConversationSummaries()`, `getRequestMessageBreakdown()`, and `getContextEvents()`. Each method should:
   - Accept well-defined filter options (time range, project ID, agent slug, etc.)
@@ -61,6 +68,7 @@ This approach prioritizes:
 - **Why**: Centralizes SQL logic, enables reuse across endpoints, and provides a testable abstraction layer for database access.
 
 ### `src/lib/server/cache.ts` — Server-Side Query Cache
+
 - **Action**: Create
 - **What**: Implement an in-memory LRU cache for query results with:
   - Time-based expiry (configurable per query type)
@@ -70,6 +78,7 @@ This approach prioritizes:
 - **Why**: Reduces repeated queries to the SQLite database, especially for frequently-accessed views (summary metrics). Avoids disk I/O for repeated drill-down filters.
 
 ### `src/routes/api/usage/+server.ts` — Usage Totals Endpoint
+
 - **Action**: Create
 - **What**: SvelteKit API route that accepts query parameters (time range, group-by dimensions, filters) and returns aggregated token usage and cache efficiency data. Support:
   - `?since=24h&until=now`
@@ -79,6 +88,7 @@ This approach prioritizes:
 - **Why**: Provides cached aggregated view for dashboard summary cards. Fast response time is critical for UI responsiveness.
 
 ### `src/routes/api/conversations/+server.ts` — Conversations List Endpoint
+
 - **Action**: Create
 - **What**: API route for conversation-level aggregation. Support:
   - `?since=24h&limit=20&offset=0` (cursor-based pagination)
@@ -87,6 +97,7 @@ This approach prioritizes:
 - **Why**: Powers the conversations table. Pagination prevents loading 100k+ rows at once.
 
 ### `src/routes/api/conversation/[id]/messages/+server.ts` — Message Breakdown Endpoint
+
 - **Action**: Create
 - **What**: API route for drilling into a specific conversation's message breakdown. Returns:
   - Per-message details: `{index, role, classification, estimatedTokens, preview, contentLength}`
@@ -94,11 +105,13 @@ This approach prioritizes:
 - **Why**: Enables deep inspection of individual conversations to understand context window usage and message composition.
 
 ### `src/routes/api/context-events/+server.ts` — Context Management Events Endpoint
+
 - **Action**: Create
 - **What**: API route for context management pressure analysis. Support filtering and grouping by agent, strategy, time range. Return aggregated events with utilization statistics.
 - **Why**: Critical for identifying context window pressure and agents approaching limits.
 
 ### `src/lib/stores/cache.ts` — Client-Side Cache Store
+
 - **Action**: Create
 - **What**: Svelte stores for caching API responses with:
   - Invalidation on filter change (time range, project, agent, etc.)
@@ -108,6 +121,7 @@ This approach prioritizes:
 - **Why**: Prevents redundant API calls when the user navigates back to a previous filter state. Improves perceived performance.
 
 ### `src/lib/stores/polling.ts` — Polling Orchestration Store
+
 - **Action**: Create
 - **What**: Manage background polling for summary metrics. Expose:
   - `startPolling(interval: number)` — begin polling usage totals
@@ -117,6 +131,7 @@ This approach prioritizes:
 - **Why**: Keeps summary metrics fresh in the background without blocking user interactions. Polling interval can be adjusted by user preference.
 
 ### `src/lib/types/api.ts` — Type Definitions
+
 - **Action**: Create
 - **What**: Define TypeScript interfaces for all API responses:
   - `UsageTotal`, `UsageTotalRow`, `CacheMetrics`
@@ -126,6 +141,7 @@ This approach prioritizes:
 - **Why**: Enables type safety across API endpoints and client stores. Catches contract mismatches at compile time.
 
 ### `src/routes/+page.svelte` — Dashboard Main Page
+
 - **Action**: Modify (in tandem with frontend architecture plan)
 - **What**: Integrate data loading via:
   - SvelteKit `load` function for initial server-side data fetch (usage totals)
@@ -135,6 +151,7 @@ This approach prioritizes:
 - **Why**: Ensures fast initial page load (server-side data) and responsive filter interactions (cached client stores).
 
 ### `src/lib/server/telemetry.ts` — Query Logging & Observability
+
 - **Action**: Create
 - **What**: Structured logging for:
   - Query execution time (slow query alerts for >500ms)
@@ -145,6 +162,7 @@ This approach prioritizes:
 - **Why**: Enables debugging performance issues, identifying slow queries, and understanding user behavior patterns.
 
 ### `src/lib/server/file-watcher.ts` — Database Change Detection
+
 - **Action**: Create
 - **What**: Optional file watcher on `~/.tenex/analysis.db` to detect when the database is updated by the TENEX backend. When changes detected, emit invalidation signal to clear server cache and trigger client revalidation.
 - **Why**: Ensures dashboard reflects latest data when TENEX backend writes new telemetry. Avoids stale cache without relying on time-based expiry alone.
@@ -303,6 +321,7 @@ This approach prioritizes:
 ## Verification
 
 ### Initial Page Load Performance
+
 ```bash
 # Verify server-side data fetch latency
 curl -w "@curl-format.txt" -o /dev/null -s http://localhost:5173/api/usage?since=24h
@@ -311,6 +330,7 @@ curl -w "@curl-format.txt" -o /dev/null -s http://localhost:5173/api/usage?since
 ```
 
 ### Filter Interaction Latency
+
 ```bash
 # Test cached response time
 curl -w "@curl-format.txt" -o /dev/null -s http://localhost:5173/api/usage?since=24h
@@ -323,6 +343,7 @@ curl -w "@curl-format.txt" -o /dev/null -s http://localhost:5173/api/usage?since
 ```
 
 ### Large Dataset Handling
+
 ```bash
 # Create a test database with 100k+ rows (simulated telemetry data)
 # Run: npm run test:load-large-dataset
@@ -331,6 +352,7 @@ curl -w "@curl-format.txt" -o /dev/null -s http://localhost:5173/api/usage?since
 ```
 
 ### Pagination
+
 ```bash
 # Test conversations endpoint with pagination
 curl 'http://localhost:5173/api/conversations?limit=50&offset=0'
@@ -340,6 +362,7 @@ curl 'http://localhost:5173/api/conversations?limit=50&offset=50'
 ```
 
 ### Error Handling
+
 ```bash
 # Simulate database unavailability
 # Stop the database, confirm API returns 500 with error message
@@ -349,6 +372,7 @@ curl 'http://localhost:5173/api/conversations?limit=50&offset=50'
 ```
 
 ### Memory Leaks
+
 ```bash
 # Run dashboard for 1 hour, periodically take heap snapshots
 # Confirm memory usage plateaus under 500MB
@@ -357,6 +381,7 @@ curl 'http://localhost:5173/api/conversations?limit=50&offset=50'
 ```
 
 ### Request Deduplication
+
 ```bash
 # Open browser devtools, Network tab
 # Rapidly change filter (e.g., click 5 times in 1 second)
@@ -364,6 +389,7 @@ curl 'http://localhost:5173/api/conversations?limit=50&offset=50'
 ```
 
 ### Cache Invalidation
+
 ```bash
 # Change filter (time range, project, etc.)
 # Confirm client-side cache is invalidated
@@ -372,6 +398,7 @@ curl 'http://localhost:5173/api/conversations?limit=50&offset=50'
 ```
 
 ### Monitoring
+
 ```bash
 # Check application logs for:
 # - Query execution times
@@ -449,23 +476,24 @@ curl 'http://localhost:5173/api/conversations?limit=50&offset=50'
    - Only the latest request result is used
 
 3. **Abort controller pattern**
+
    ```typescript
    // In polling.ts
    let currentAbortController: AbortController | null = null;
 
    function cancelInFlight() {
-     if (currentAbortController) {
-       currentAbortController.abort();
-     }
+   	if (currentAbortController) {
+   		currentAbortController.abort();
+   	}
    }
 
    async function poll() {
-     cancelInFlight();
-     currentAbortController = new AbortController();
-     const response = await fetch('/api/usage', {
-       signal: currentAbortController.signal,
-     });
-     // ...
+   	cancelInFlight();
+   	currentAbortController = new AbortController();
+   	const response = await fetch('/api/usage', {
+   		signal: currentAbortController.signal
+   	});
+   	// ...
    }
    ```
 
@@ -474,6 +502,7 @@ curl 'http://localhost:5173/api/conversations?limit=50&offset=50'
 **Pattern:** Show UI change immediately, sync with server asynchronously.
 
 Example: User changes time range filter
+
 1. UI immediately shows "loading" state
 2. New request sent to API
 3. Old cached data still shown (if cache hit)
@@ -490,19 +519,19 @@ Example: User changes time range filter
 let connection: Database | null = null;
 
 export function getDatabase(): Database {
-  if (!connection) {
-    const dbPath = path.resolve(os.homedir(), '.tenex', 'analysis.db');
-    connection = new Database(dbPath, { readonly: true });
-    connection.pragma('journal_mode = WAL'); // Better concurrency
-  }
-  return connection;
+	if (!connection) {
+		const dbPath = path.resolve(os.homedir(), '.tenex', 'analysis.db');
+		connection = new Database(dbPath, { readonly: true });
+		connection.pragma('journal_mode = WAL'); // Better concurrency
+	}
+	return connection;
 }
 
 export function closeDatabase() {
-  if (connection) {
-    connection.close();
-    connection = null;
-  }
+	if (connection) {
+		connection.close();
+		connection = null;
+	}
 }
 
 // On app shutdown
@@ -515,20 +544,20 @@ process.on('SIGTERM', () => closeDatabase());
 const QUERY_TIMEOUT = 5000; // 5 seconds
 
 function executeQuery(sql: string, params?: any[]): any[] {
-  try {
-    const db = getDatabase();
-    const stmt = db.prepare(sql);
-    
-    // SQLite doesn't support per-query timeout; use interrupt
-    const results: any[] = [];
-    for (const row of stmt.iterate(...(params || []))) {
-      results.push(row);
-    }
-    return results;
-  } catch (error) {
-    logger.error('Query failed', { sql, error });
-    throw new Error(`Database query failed: ${error.message}`);
-  }
+	try {
+		const db = getDatabase();
+		const stmt = db.prepare(sql);
+
+		// SQLite doesn't support per-query timeout; use interrupt
+		const results: any[] = [];
+		for (const row of stmt.iterate(...(params || []))) {
+			results.push(row);
+		}
+		return results;
+	} catch (error) {
+		logger.error('Query failed', { sql, error });
+		throw new Error(`Database query failed: ${error.message}`);
+	}
 }
 ```
 
@@ -603,6 +632,7 @@ function executeQuery(sql: string, params?: any[]): any[] {
 **Scenario:** Database file is moved, deleted, or corrupted.
 
 **Recovery:**
+
 1. Detect error on first query attempt
 2. Log error: `"Database connection failed: [reason]"`
 3. Return HTTP 500 to client
@@ -614,6 +644,7 @@ function executeQuery(sql: string, params?: any[]): any[] {
 **Scenario:** User has very large dataset (1M+ rows). Query takes >5 seconds.
 
 **Recovery:**
+
 1. Log slow query warning: `"Slow query detected: [sql] took [time]ms"`
 2. If query exceeds QUERY_TIMEOUT (5s), database.interrupt() is called
 3. Client retries with lower limits (e.g., conversations endpoint returns fewer rows)
@@ -624,6 +655,7 @@ function executeQuery(sql: string, params?: any[]): any[] {
 **Scenario:** Network glitch causes API request to fail.
 
 **Recovery:**
+
 1. Retry with exponential backoff: 100ms, 500ms, 2s (max 3 attempts)
 2. If all retries fail, show user message: "Unable to load data. Check your connection."
 3. Show cached data if available (graceful degradation)
@@ -634,6 +666,7 @@ function executeQuery(sql: string, params?: any[]): any[] {
 **Scenario:** TENEX backend writes new telemetry while dashboard is open. Dashboard shows old data.
 
 **Recovery:**
+
 1. Time-based expiry: cache entries expire after 30-60 seconds
 2. File watcher (optional): detect database modification, invalidate cache immediately
 3. User can manually refresh

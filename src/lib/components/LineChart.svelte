@@ -13,9 +13,26 @@
 	} from 'chart.js';
 	import { SERIES_COLORS, hexToRgba, getChartTheme } from '$lib/utils/colors.js';
 
-	ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
+	ChartJS.register(
+		CategoryScale,
+		LinearScale,
+		PointElement,
+		LineElement,
+		Title,
+		Tooltip,
+		Legend,
+		Filler
+	);
 
-	const { data = [], lines = [], xKey, height = 300, title = undefined, annotations = [], stacked = false } = $props<{
+	const {
+		data = [],
+		lines = [],
+		xKey,
+		height = 300,
+		title = undefined,
+		annotations = [],
+		stacked = false
+	} = $props<{
 		data?: Array<Record<string, number | string>>;
 		lines?: Array<{ key: string; label: string; color?: string }>;
 		xKey: string;
@@ -29,16 +46,16 @@
 	const theme = $derived(getChartTheme());
 
 	const chartData = $derived({
-		labels: data.map((d) => d[xKey] as string),
-		datasets: lines.map((line, i) => {
+		labels: data.map((d: Record<string, number | string>) => d[xKey] as string),
+		datasets: lines.map((line: { key: string; label: string; color?: string }, i: number) => {
 			const color = line.color ?? SERIES_COLORS[i % SERIES_COLORS.length];
 			return {
 				label: line.label,
-				data: data.map((d) => Number(d[line.key]) || 0),
+				data: data.map((d: Record<string, number | string>) => Number(d[line.key]) || 0),
 				borderColor: color,
 				backgroundColor: stacked ? hexToRgba(color, 0.75) : hexToRgba(color, 0.1),
 				borderWidth: stacked ? 0 : 2,
-				pointRadius: data.length > 30 ? 0 : (stacked ? 0 : 3),
+				pointRadius: data.length > 30 ? 0 : stacked ? 0 : 3,
 				pointHoverRadius: stacked ? 0 : 5,
 				tension: 0.3,
 				fill: stacked ? 'stack' : false
@@ -89,48 +106,59 @@
 	});
 
 	// Deduplicate annotation labels for the legend
-	const annotationLegend = $derived(annotations.reduce<Array<{ color: string; label: string }>>(
-		(acc, a) => {
-			if (!acc.some((x) => x.label === a.label)) acc.push({ color: a.color, label: a.label });
-			return acc;
-		},
-		[]
-	));
+	const annotationLegend = $derived(
+		annotations.reduce(
+			(
+				acc: Array<{ color: string; label: string }>,
+				a: { index: number; color: string; label: string }
+			) => {
+				if (!acc.some((x: { color: string; label: string }) => x.label === a.label))
+					acc.push({ color: a.color, label: a.label });
+				return acc;
+			},
+			[]
+		)
+	);
 
 	// Group annotations by index so multiple events at the same point stack
-	const annotationsByIndex = $derived(annotations.reduce<Map<number, Array<{ color: string; label: string }>>>(
-		(map, a) => {
-			const list = map.get(a.index) ?? [];
-			list.push({ color: a.color, label: a.label });
-			map.set(a.index, list);
-			return map;
-		},
-		new Map()
-	));
+	const annotationsByIndex = $derived(
+		annotations.reduce(
+			(
+				map: Map<number, Array<{ color: string; label: string }>>,
+				a: { index: number; color: string; label: string }
+			) => {
+				const list = map.get(a.index) ?? [];
+				list.push({ color: a.color, label: a.label });
+				map.set(a.index, list);
+				return map;
+			},
+			new Map<number, Array<{ color: string; label: string }>>()
+		)
+	);
 
 	const totalPoints = $derived(data.length);
 </script>
 
 {#if data.length === 0}
-	<div class="empty-state" style="height: {height}px">
+	<div class="empty-state" style:height="{height}px">
 		<p class="empty-text">No data available</p>
 	</div>
 {:else}
 	<div class="chart-wrapper">
-		<div style="height: {height}px; position: relative;">
+		<div style:height="{height}px" style:position="relative">
 			<Line data={chartData} {options} />
 		</div>
 
 		{#if annotations.length > 0}
 			<!-- Annotation dot strip — one slot per data point, dots at event positions -->
-			<div class="annotation-strip" style="--total: {totalPoints}">
+			<div class="annotation-strip" style:--total={totalPoints}>
 				{#each { length: totalPoints } as _, i}
 					<div class="annotation-slot">
 						{#if annotationsByIndex.has(i)}
 							{#each annotationsByIndex.get(i) ?? [] as ann}
 								<span
 									class="annotation-dot"
-									style="background: {ann.color};"
+									style:background={ann.color}
 									title="{ann.label} at #{i + 1}"
 								></span>
 							{/each}
@@ -143,7 +171,7 @@
 			<div class="annotation-legend">
 				{#each annotationLegend as item}
 					<span class="legend-item">
-						<span class="legend-dot" style="background: {item.color};"></span>
+						<span class="legend-dot" style:background={item.color}></span>
 						<span class="legend-label">{item.label}</span>
 					</span>
 				{/each}

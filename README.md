@@ -64,26 +64,26 @@ tenex-analytics-web/
 
 ## npm Scripts
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start dev server with HMR on port 5173 |
-| `npm run build` | Build production bundle |
-| `npm run preview` | Preview production build |
-| `npm run test` | Run Vitest test suite |
-| `npm run test:watch` | Run tests in watch mode |
-| `npm run lint` | Run ESLint |
-| `npm run lint:fix` | Fix auto-fixable lint errors |
-| `npm run format` | Run Prettier |
-| `npm run format:check` | Check Prettier compliance |
+| Command                | Description                            |
+| ---------------------- | -------------------------------------- |
+| `npm run dev`          | Start dev server with HMR on port 5173 |
+| `npm run build`        | Build production bundle                |
+| `npm run preview`      | Preview production build               |
+| `npm run test`         | Run Vitest test suite                  |
+| `npm run test:watch`   | Run tests in watch mode                |
+| `npm run lint`         | Run ESLint                             |
+| `npm run lint:fix`     | Fix auto-fixable lint errors           |
+| `npm run format`       | Run Prettier                           |
+| `npm run format:check` | Check Prettier compliance              |
 
 ## API Endpoints
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /api/telemetry` | Full telemetry bundle (summary + trends + cache + cost) |
-| `GET /api/telemetry/summary` | Aggregated summary metrics |
-| `GET /api/tokens?from=YYYY-MM-DD&to=YYYY-MM-DD` | Token usage trends with optional date range |
-| `GET /api/cache` | Cache efficiency metrics by model and day |
+| Endpoint                                        | Description                                             |
+| ----------------------------------------------- | ------------------------------------------------------- |
+| `GET /api/telemetry`                            | Full telemetry bundle (summary + trends + cache + cost) |
+| `GET /api/telemetry/summary`                    | Aggregated summary metrics                              |
+| `GET /api/tokens?from=YYYY-MM-DD&to=YYYY-MM-DD` | Token usage trends with optional date range             |
+| `GET /api/cache`                                | Cache efficiency metrics by model and day               |
 
 ## Environment Variables
 
