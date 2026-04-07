@@ -34,7 +34,7 @@ export function formatNumber(value: number, decimals = 0): string {
  * e.g., 12.345 → "$12.35"
  */
 export function formatCost(value: number, decimals = 2): string {
-	if (value < 0.01 && value > 0) {
+	if (decimals <= 2 && value < 0.01 && value > 0) {
 		return `<$0.01`;
 	}
 	return new Intl.NumberFormat('en-US', {

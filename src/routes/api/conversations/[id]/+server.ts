@@ -2,6 +2,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/database.js';
+import {
+	allocatePromptCostByTokens,
+	inferAnthropicRequestCost
+} from '$lib/server/anthropic-pricing.js';
 
 function hasTable(name: string): boolean {
 	try {
@@ -43,6 +47,24 @@ function countSystemReminders(text: string): number {
 	return count;
 }
 
+function extractToolName(classification: string, preview: string): string | null {
+	if (!preview || (classification !== 'tool-call' && classification !== 'tool-result')) {
+		return null;
+	}
+
+	try {
+		const parsed = JSON.parse(preview) as { toolName?: unknown };
+		if (typeof parsed.toolName === 'string' && parsed.toolName.length > 0) {
+			return parsed.toolName;
+		}
+	} catch {
+		const match = preview.match(/"toolName":"([^"]+)"/);
+		if (match?.[1]) return match[1];
+	}
+
+	return null;
+}
+
 export const GET: RequestHandler = ({ params }) => {
 	const conversationId = params.id;
 
@@ -59,6 +81,7 @@ export const GET: RequestHandler = ({ params }) => {
 			SELECT
 				request_id AS id,
 				started_at_ms,
+				COALESCE(provider, '') AS provider,
 				COALESCE(model, 'unknown') AS model,
 				COALESCE(input_tokens, 0) AS inputTokens,
 				COALESCE(output_tokens, 0) AS outputTokens,
@@ -94,31 +117,70 @@ export const GET: RequestHandler = ({ params }) => {
 				tokenCount: number;
 				contentPreview: string;
 				systemReminderCount: number;
+				toolName: string | null;
+				promptCostUsd: number;
 			}> = [];
 			if (msgStmt) {
 				try {
 					messages = (msgStmt.all({ requestId: r.id }) as Array<Record<string, unknown>>).map(
-						(m) => ({
-							role: m.role as string,
-							classification: m.classification as string,
-							tokenCount: Number(m.tokenCount),
-							contentPreview: m.contentPreview as string,
-							systemReminderCount: countSystemReminders(m.contentPreview as string)
-						})
+						(m) => {
+							const classification = m.classification as string;
+							const contentPreview = m.contentPreview as string;
+							return {
+								role: m.role as string,
+								classification,
+								tokenCount: Number(m.tokenCount),
+								contentPreview,
+								systemReminderCount: countSystemReminders(contentPreview),
+								toolName: extractToolName(classification, contentPreview),
+								promptCostUsd: 0
+							};
+						}
 					);
 				} catch {
 					// ignore
 				}
 			}
+
+			const inferredCost = inferAnthropicRequestCost({
+				provider: r.provider as string,
+				model: r.model as string,
+				inputTokens: Number(r.inputTokens),
+				outputTokens: Number(r.outputTokens),
+				cacheReadTokens: Number(r.cacheReadTokens),
+				cacheWriteTokens: Number(r.cacheWriteTokens)
+			});
+			const rawCostUsd = Number(r.totalCostUsd);
+			const totalCostUsd = rawCostUsd > 0 ? rawCostUsd : (inferredCost?.totalCostUsd ?? 0);
+			const promptCostUsd = inferredCost?.promptCostUsd ?? 0;
+			const messagePromptCosts = allocatePromptCostByTokens(
+				messages.map((message) => message.tokenCount),
+				promptCostUsd
+			);
+			messages = messages.map((message, index) => ({
+				...message,
+				promptCostUsd: messagePromptCosts[index] ?? 0
+			}));
+
 			return {
 				id: r.id as string,
 				timestamp: new Date(Number(r.started_at_ms)).toISOString(),
+				provider: r.provider as string,
 				model: r.model as string,
 				inputTokens: Number(r.inputTokens),
 				outputTokens: Number(r.outputTokens),
 				cacheReadTokens: Number(r.cacheReadTokens),
 				cacheWriteTokens: Number(r.cacheWriteTokens),
-				totalCostUsd: Number(r.totalCostUsd),
+				totalCostUsd,
+				rawCostUsd,
+				costSource: rawCostUsd > 0 ? 'recorded' : inferredCost ? 'inferred' : 'unavailable',
+				promptCostUsd,
+				outputCostUsd: inferredCost?.outputCostUsd ?? 0,
+				inputCostUsd: inferredCost?.inputCostUsd ?? 0,
+				cacheReadCostUsd: inferredCost?.cacheReadCostUsd ?? 0,
+				cacheWriteCostUsd: inferredCost?.cacheWriteCostUsd ?? 0,
+				pricingModel: inferredCost?.canonicalModel ?? null,
+				cacheWriteTtl: inferredCost?.cacheWriteTtl ?? null,
 				status: r.status as string,
 				messages
 			};

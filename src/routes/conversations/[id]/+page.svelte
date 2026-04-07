@@ -13,16 +13,28 @@
 		tokenCount: number;
 		contentPreview: string;
 		systemReminderCount: number;
+		toolName?: string | null;
+		promptCostUsd: number;
 	}
 	interface LLMRequest {
 		id: string;
 		timestamp: string;
+		provider: string;
 		model: string;
 		inputTokens: number;
 		outputTokens: number;
 		cacheReadTokens: number;
 		cacheWriteTokens: number;
 		totalCostUsd: number;
+		rawCostUsd: number;
+		costSource: 'recorded' | 'inferred' | 'unavailable';
+		promptCostUsd: number;
+		outputCostUsd: number;
+		inputCostUsd: number;
+		cacheReadCostUsd: number;
+		cacheWriteCostUsd: number;
+		pricingModel: string | null;
+		cacheWriteTtl: '5m' | null;
 		messages: Message[];
 	}
 
@@ -81,6 +93,12 @@
 	});
 
 	const totalTokens = $derived(requests.reduce((s, r) => s + r.inputTokens + r.outputTokens, 0));
+	const totalConversationCostUsd = $derived(
+		requests.reduce((sum, request) => sum + (request.totalCostUsd ?? 0), 0)
+	);
+	const inferredRequestCount = $derived(
+		requests.filter((request) => request.costSource === 'inferred').length
+	);
 
 	function toggleExpand(id: string): void {
 		if (expanded.has(id)) expanded.delete(id);
@@ -90,6 +108,26 @@
 
 	function requestReminderCount(req: LLMRequest): number {
 		return req.messages.reduce((s, m) => s + (m.systemReminderCount ?? 0), 0);
+	}
+
+	function requestBadge(req: LLMRequest): { tone: string; label: string } | null {
+		const last = req.messages[req.messages.length - 1];
+		if (!last) return null;
+
+		if (
+			(last.classification === 'tool-call' || last.classification === 'tool-result') &&
+			last.toolName
+		) {
+			return {
+				tone: 'tool',
+				label: `tool ${last.toolName}`
+			};
+		}
+
+		return {
+			tone: last.role,
+			label: last.role
+		};
 	}
 
 	function formatDuration(seconds: number): string {
@@ -241,6 +279,13 @@
 		<div class="metric">
 			<dt>Cache Writes</dt>
 			<dd>{statsLoading ? '—' : formatNumber(stats?.summary.totalCacheWriteTokens ?? 0)}</dd>
+		</div>
+		<div class="metric">
+			<dt>Conversation Cost</dt>
+			<dd>{loading ? '—' : formatCost(totalConversationCostUsd)}</dd>
+			{#if !loading && inferredRequestCount > 0}
+				<div class="metric-sub">estimated for {inferredRequestCount} req</div>
+			{/if}
 		</div>
 		<div class="metric last">
 			<dt>Requests</dt>
@@ -490,21 +535,27 @@
 
 	<!-- ── Request Timeline ─────────────────────────────────────────────────── -->
 	<Card title="Request Timeline" {loading}>
+		{#if !loading && inferredRequestCount > 0}
+			<p class="section-desc">
+				Request costs are inferred for zero-priced Anthropic rows using current Anthropic token,
+				cache-read, and 5-minute cache-write pricing. Message rows show their share of prompt-side
+				cost; output cost stays at the request level.
+			</p>
+		{/if}
 		{#if requests.length === 0}
 			<p class="empty">No requests found</p>
 		{:else}
 			<div class="timeline">
 				{#each requests as req}
+					{@const badge = requestBadge(req)}
 					<div class="request-card">
 						<button class="request-header" onclick={() => toggleExpand(req.id)}>
 							<div class="req-meta">
 								<span class="req-time">{req.timestamp?.slice(0, 19) ?? '—'}</span>
 								<span class="req-model">{req.model}</span>
 							</div>
-							{#if req.messages.length > 0}
-								<span class="role-badge role-{req.messages[req.messages.length - 1].role}"
-									>{req.messages[req.messages.length - 1].role}</span
-								>
+							{#if badge}
+								<span class="role-badge role-{badge.tone}">{badge.label}</span>
 							{/if}
 							<div class="req-tokens">
 								<span class="token-pill in">↑ {formatNumber(req.inputTokens)}</span>
@@ -519,6 +570,9 @@
 											: ''}</span
 									>
 								{/if}
+								{#if req.costSource === 'inferred'}
+									<span class="token-pill estimate">estimate</span>
+								{/if}
 								<span class="req-cost">{formatCost(req.totalCostUsd)}</span>
 							</div>
 							<span class="expand-icon">{expanded.has(req.id) ? '▲' : '▼'}</span>
@@ -529,12 +583,27 @@
 								{#if req.messages.length === 0}
 									<p class="no-msgs">No messages</p>
 								{:else}
+									<div class="request-cost-breakdown">
+										<span
+											>{req.costSource === 'inferred' ? 'Estimated total' : 'Total'}
+											{formatCost(req.totalCostUsd)}</span
+										>
+										{#if req.costSource === 'inferred'}
+											<span>Estimated prompt {formatCost(req.promptCostUsd)}</span>
+											<span>Output {formatCost(req.outputCostUsd)}</span>
+											<span>Input {formatCost(req.inputCostUsd)}</span>
+											<span>Cache Read {formatCost(req.cacheReadCostUsd)}</span>
+											<span>Cache Write {formatCost(req.cacheWriteCostUsd)}</span>
+											<span>TTL {req.cacheWriteTtl}</span>
+										{/if}
+									</div>
 									<table class="msg-table">
 										<thead>
 											<tr>
 												<th>Role</th>
 												<th>Classification</th>
 												<th class="num">Tokens</th>
+												<th class="num">Estimated Prompt Cost</th>
 												<th>Preview</th>
 											</tr>
 										</thead>
@@ -542,8 +611,18 @@
 											{#each req.messages as msg}
 												<tr>
 													<td><span class="role-badge role-{msg.role}">{msg.role}</span></td>
-													<td class="dim">{msg.classification || '—'}</td>
-													<td class="num">{msg.tokenCount}</td>
+													<td class="dim">
+														{msg.classification || '—'}{#if msg.toolName}
+															· {msg.toolName}{/if}
+													</td>
+													<td class="num">{formatNumber(msg.tokenCount)}</td>
+													<td class="num">
+														{#if req.costSource === 'inferred'}
+															{formatCost(msg.promptCostUsd, 4)}
+														{:else}
+															—
+														{/if}
+													</td>
 													<td class="preview">
 														{msg.contentPreview}
 														{#if msg.systemReminderCount > 0}
@@ -635,6 +714,13 @@
 		color: var(--text);
 		line-height: 1;
 		margin: 0;
+	}
+	.metric-sub {
+		margin-top: 0.375rem;
+		font-size: 0.6875rem;
+		color: var(--muted);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
 	}
 
 	/* Stats grid in cards */
@@ -779,6 +865,11 @@
 		border: 1px solid var(--border);
 		color: var(--yellow, #eab308);
 	}
+	.token-pill.estimate {
+		background: var(--surface);
+		border: 1px solid var(--border);
+		color: var(--muted);
+	}
 	.req-cost {
 		font-size: 0.8125rem;
 		color: var(--muted);
@@ -792,6 +883,14 @@
 		padding: 0.75rem 1rem;
 		border-top: 1px solid var(--border);
 		background: var(--surface);
+	}
+	.request-cost-breakdown {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		margin-bottom: 0.75rem;
+		font-size: 0.75rem;
+		color: var(--muted);
 	}
 	.msg-table {
 		width: 100%;
@@ -868,6 +967,11 @@
 		background: var(--surface);
 		border: 1px solid var(--border);
 		color: var(--dim);
+	}
+	.role-tool {
+		background: var(--surface);
+		border: 1px solid var(--border);
+		color: var(--green);
 	}
 	.no-msgs {
 		color: var(--muted);
