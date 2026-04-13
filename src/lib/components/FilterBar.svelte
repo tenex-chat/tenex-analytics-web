@@ -1,7 +1,15 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { filters } from '$lib/stores/filters.js';
 	import { formatDate } from '$lib/utils/format.js';
-	import type { TimePreset } from '$lib/stores/filters.js';
+	import {
+		DEFAULT_PRESET,
+		buildFilterSearchParams,
+		createDefaultFilters,
+		hasFilterQueryParams,
+		parseFiltersFromSearchParams
+	} from '$lib/stores/filters.js';
+	import type { FilterState, TimePreset } from '$lib/stores/filters.js';
 
 	interface FilterOptions {
 		projects: string[];
@@ -18,6 +26,9 @@
 		models: [],
 		apiKeyIdentities: []
 	});
+	const FILTER_STORAGE_KEY = 'tenex.analytics.filters';
+	let filtersHydrated = $state(false);
+	let optionsLoaded = $state(false);
 
 	// Local bound values for custom date pickers
 	let fromVal = $state(formatDate($filters.from));
@@ -36,28 +47,41 @@
 		{ label: 'Custom', value: 'custom' }
 	];
 
-	async function initFilters() {
-		const urlParams = new URLSearchParams(window.location.search);
-		const urlModel = urlParams.get('model');
-		const urlAgent = urlParams.get('agent');
-		const urlProject = urlParams.get('project');
-		const urlProvider = urlParams.get('provider');
-		const urlApiKey = urlParams.get('apiKey');
-		if (urlModel || urlAgent || urlProject || urlProvider || urlApiKey) {
-			filters.update((s) => ({
-				...s,
-				model: urlModel ?? s.model,
-				agent: urlAgent ?? s.agent,
-				project: urlProject ?? s.project,
-				provider: urlProvider ?? s.provider,
-				apiKey: urlApiKey ?? s.apiKey
-			}));
-			if (urlModel) modelVal = urlModel;
-			if (urlAgent) agentVal = urlAgent;
-			if (urlProject) projectVal = urlProject;
-			if (urlApiKey) apiKeyVal = urlApiKey;
+	function syncInputsFromFilters(state: FilterState) {
+		fromVal = formatDate(state.from);
+		toVal = formatDate(state.to);
+		projectVal = state.project ?? '';
+		agentVal = state.agent ?? '';
+		modelVal = state.model ?? '';
+		apiKeyVal = state.apiKey ?? '';
+	}
+
+	function hydrateFilters() {
+		if (filtersHydrated) return;
+		if (!browser) {
+			filtersHydrated = true;
+			return;
 		}
 
+		const urlParams = new URLSearchParams(window.location.search);
+		if (hasFilterQueryParams(urlParams)) {
+			filters.set(parseFiltersFromSearchParams(urlParams, createDefaultFilters()));
+		} else {
+			const storedParams = localStorage.getItem(FILTER_STORAGE_KEY);
+			if (storedParams) {
+				const persistedSearchParams = new URLSearchParams(storedParams);
+				if (hasFilterQueryParams(persistedSearchParams)) {
+					filters.set(parseFiltersFromSearchParams(persistedSearchParams, createDefaultFilters()));
+				}
+			}
+		}
+		syncInputsFromFilters($filters);
+		filtersHydrated = true;
+	}
+
+	async function loadOptions() {
+		if (optionsLoaded) return;
+		optionsLoaded = true;
 		try {
 			const res = await fetch('/api/filters');
 			if (res.ok) options = await res.json();
@@ -67,15 +91,21 @@
 	}
 
 	$effect(() => {
-		initFilters();
+		hydrateFilters();
+		void loadOptions();
+	});
+
+	$effect(() => {
+		syncInputsFromFilters($filters);
+	});
+
+	$effect(() => {
+		if (!filtersHydrated || !browser) return;
+		localStorage.setItem(FILTER_STORAGE_KEY, buildFilterSearchParams($filters).toString());
 	});
 
 	function applyPreset(preset: TimePreset) {
 		filters.setPreset(preset);
-		if (preset !== 'custom') {
-			fromVal = formatDate($filters.from);
-			toVal = formatDate($filters.to);
-		}
 	}
 
 	function applyFrom(e: Event) {
@@ -116,16 +146,19 @@
 
 	function reset() {
 		filters.reset();
-		fromVal = formatDate($filters.from);
-		toVal = formatDate($filters.to);
-		projectVal = '';
-		agentVal = '';
-		modelVal = '';
-		apiKeyVal = '';
 	}
 
 	const activePreset = $derived($filters.preset);
-	const hasFilters = $derived(!!(projectVal || agentVal || modelVal || apiKeyVal));
+	const hasFilters = $derived(
+		activePreset !== DEFAULT_PRESET ||
+			!!(
+				$filters.project ||
+				$filters.agent ||
+				$filters.provider ||
+				$filters.model ||
+				$filters.apiKey
+			)
+	);
 </script>
 
 <div class="filter-bar">

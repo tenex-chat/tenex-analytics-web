@@ -11,6 +11,7 @@ import {
 	parseEntityFilters,
 	buildEntityFilter
 } from '$lib/server/database.js';
+import { buildAnthropicRequestCostSql } from '$lib/server/anthropic-pricing.js';
 
 const EMPTY_RESPONSE = {
 	summary: {
@@ -87,7 +88,7 @@ export const GET: RequestHandler = ({ url }) => {
 			COUNT(DISTINCT conversation_id)                             AS totalConversations,
 			CAST(COUNT(*) AS REAL) / COUNT(DISTINCT conversation_id)   AS avgRequests,
 			CAST(SUM(total_tokens) AS REAL) / COUNT(DISTINCT conversation_id) AS avgTokens,
-			CAST(SUM(cost_usd) AS REAL) / COUNT(DISTINCT conversation_id)     AS avgCost
+			CAST(SUM(${buildAnthropicRequestCostSql('llm_requests')}) AS REAL) / COUNT(DISTINCT conversation_id) AS avgCost
 		FROM llm_requests
 		${whereClause}
 	`
@@ -185,7 +186,7 @@ export const GET: RequestHandler = ({ url }) => {
 	const convCosts = db
 		.prepare(
 			`
-		SELECT conversation_id, SUM(cost_usd) AS total_cost
+		SELECT conversation_id, SUM(${buildAnthropicRequestCostSql('llm_requests')}) AS total_cost
 		FROM llm_requests
 		${whereClause}
 		GROUP BY conversation_id
@@ -263,40 +264,31 @@ export const GET: RequestHandler = ({ url }) => {
 		.prepare(
 			`
 		SELECT
-			date(conv_start/1000, 'unixepoch') AS date,
+			date(conv_start_ms/1000, 'unixepoch') AS date,
 			AVG(first_tokens) AS avgFirstTokens,
 			AVG(last_tokens)  AS avgLastTokens
 		FROM (
 			SELECT
 				conversation_id,
-				MIN(started_at_ms) AS conv_start,
+				MIN(started_at_ms) OVER (PARTITION BY conversation_id) AS conv_start_ms,
 				FIRST_VALUE(total_tokens) OVER (PARTITION BY conversation_id ORDER BY started_at_ms ASC)  AS first_tokens,
-				FIRST_VALUE(total_tokens) OVER (PARTITION BY conversation_id ORDER BY started_at_ms DESC) AS last_tokens
+				FIRST_VALUE(total_tokens) OVER (PARTITION BY conversation_id ORDER BY started_at_ms DESC) AS last_tokens,
+				ROW_NUMBER() OVER (PARTITION BY conversation_id ORDER BY started_at_ms DESC) AS row_num
 			FROM llm_requests
 			${whereClause}
 		)
-		GROUP BY conversation_id, conv_start
+		WHERE row_num = 1
+		GROUP BY date
+		ORDER BY date ASC
 	`
 		)
 		.all(params) as Array<{ date: string; avgFirstTokens: number; avgLastTokens: number }>;
 
-	// Aggregate by date
-	const growthByDate = new Map<string, { sumFirst: number; sumLast: number; count: number }>();
-	for (const row of tokenGrowthRows) {
-		const d = row.date as string;
-		const entry = growthByDate.get(d) ?? { sumFirst: 0, sumLast: 0, count: 0 };
-		entry.sumFirst += Number(row.avgFirstTokens);
-		entry.sumLast += Number(row.avgLastTokens);
-		entry.count++;
-		growthByDate.set(d, entry);
-	}
-	const tokenGrowth = Array.from(growthByDate.entries())
-		.sort(([a], [b]) => a.localeCompare(b))
-		.map(([date, e]) => ({
-			date,
-			avgFirstTokens: e.sumFirst / e.count,
-			avgLastTokens: e.sumLast / e.count
-		}));
+	const tokenGrowth = tokenGrowthRows.map((row) => ({
+		date: row.date as string,
+		avgFirstTokens: Number(row.avgFirstTokens),
+		avgLastTokens: Number(row.avgLastTokens)
+	}));
 
 	// ── Tool stripping ────────────────────────────────────────────────────────
 	const toolStrippingRow = db
@@ -349,13 +341,13 @@ export const GET: RequestHandler = ({ url }) => {
 			conversation_id                           AS conversationId,
 			MAX(agent_slug)                           AS agentSlug,
 			MAX(project_id)                           AS projectId,
-			SUM(cost_usd)                             AS totalCost,
+			SUM(${buildAnthropicRequestCostSql('llm_requests')}) AS totalCost,
 			COUNT(*)                                  AS requestCount,
 			SUM(total_tokens)                         AS totalTokens
 		FROM llm_requests
 		${whereClause}
 		GROUP BY conversation_id
-		ORDER BY totalTokens DESC
+		ORDER BY totalCost DESC
 		LIMIT 10
 	`
 		)
