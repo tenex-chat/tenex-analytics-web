@@ -2,6 +2,7 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/database.js';
+import { buildAnthropicRequestCostSql } from '$lib/server/anthropic-pricing.js';
 
 function hasTable(name: string): boolean {
 	try {
@@ -90,9 +91,9 @@ export const GET: RequestHandler = ({ params, url }) => {
 				COALESCE(input_cache_read_tokens, 0) AS cache_read_tokens,
 				COALESCE(input_cache_write_tokens, 0) AS cache_write_tokens,
 				COALESCE(total_tokens, 0) AS total_tokens,
-				ROUND(COALESCE(cost_usd, 0), 6) AS cost_usd,
+				ROUND(${buildAnthropicRequestCostSql('llm_requests')}, 6) AS cost_usd,
 				request_id
-			FROM llm_requests
+			FROM llm_requests llm_requests
 			WHERE conversation_id = @conversationId AND status = 'success'
 			ORDER BY started_at_ms ASC
 		`

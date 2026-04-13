@@ -84,6 +84,7 @@ export const GET: RequestHandler = ({ params }) => {
 				COALESCE(provider, '') AS provider,
 				COALESCE(model, 'unknown') AS model,
 				COALESCE(input_tokens, 0) AS inputTokens,
+				input_no_cache_tokens AS inputNoCacheTokens,
 				COALESCE(output_tokens, 0) AS outputTokens,
 				COALESCE(input_cache_read_tokens, 0) AS cacheReadTokens,
 				COALESCE(input_cache_write_tokens, 0) AS cacheWriteTokens,
@@ -111,10 +112,16 @@ export const GET: RequestHandler = ({ params }) => {
 			: null;
 
 		const requests = requestRows.map((r) => {
+			const rawInputTokens = Number(r.inputTokens);
+			const requestInputNoCacheTokens =
+				r.inputNoCacheTokens === null || r.inputNoCacheTokens === undefined
+					? Math.max(0, rawInputTokens - Number(r.cacheReadTokens) - Number(r.cacheWriteTokens))
+					: Number(r.inputNoCacheTokens);
 			let messages: Array<{
 				role: string;
 				classification: string;
 				tokenCount: number;
+				billedInputTokens: number;
 				contentPreview: string;
 				systemReminderCount: number;
 				toolName: string | null;
@@ -130,6 +137,7 @@ export const GET: RequestHandler = ({ params }) => {
 								role: m.role as string,
 								classification,
 								tokenCount: Number(m.tokenCount),
+								billedInputTokens: 0,
 								contentPreview,
 								systemReminderCount: countSystemReminders(contentPreview),
 								toolName: extractToolName(classification, contentPreview),
@@ -146,6 +154,10 @@ export const GET: RequestHandler = ({ params }) => {
 				provider: r.provider as string,
 				model: r.model as string,
 				inputTokens: Number(r.inputTokens),
+				inputNoCacheTokens:
+					r.inputNoCacheTokens === null || r.inputNoCacheTokens === undefined
+						? undefined
+						: Number(r.inputNoCacheTokens),
 				outputTokens: Number(r.outputTokens),
 				cacheReadTokens: Number(r.cacheReadTokens),
 				cacheWriteTokens: Number(r.cacheWriteTokens)
@@ -153,12 +165,16 @@ export const GET: RequestHandler = ({ params }) => {
 			const rawCostUsd = Number(r.totalCostUsd);
 			const totalCostUsd = rawCostUsd > 0 ? rawCostUsd : (inferredCost?.totalCostUsd ?? 0);
 			const promptCostUsd = inferredCost?.promptCostUsd ?? 0;
+			const totalMessageTokens = messages.reduce((sum, message) => sum + message.tokenCount, 0);
+			const billedInputTarget = Math.min(requestInputNoCacheTokens, rawInputTokens);
+			const billedInputTokens = totalMessageTokens > 0 ? billedInputTarget / totalMessageTokens : 0;
 			const messagePromptCosts = allocatePromptCostByTokens(
 				messages.map((message) => message.tokenCount),
 				promptCostUsd
 			);
 			messages = messages.map((message, index) => ({
 				...message,
+				billedInputTokens: Math.round(message.tokenCount * billedInputTokens),
 				promptCostUsd: messagePromptCosts[index] ?? 0
 			}));
 
@@ -167,7 +183,8 @@ export const GET: RequestHandler = ({ params }) => {
 				timestamp: new Date(Number(r.started_at_ms)).toISOString(),
 				provider: r.provider as string,
 				model: r.model as string,
-				inputTokens: Number(r.inputTokens),
+				inputTokens: rawInputTokens,
+				inputNoCacheTokens: requestInputNoCacheTokens,
 				outputTokens: Number(r.outputTokens),
 				cacheReadTokens: Number(r.cacheReadTokens),
 				cacheWriteTokens: Number(r.cacheWriteTokens),
@@ -179,6 +196,7 @@ export const GET: RequestHandler = ({ params }) => {
 				inputCostUsd: inferredCost?.inputCostUsd ?? 0,
 				cacheReadCostUsd: inferredCost?.cacheReadCostUsd ?? 0,
 				cacheWriteCostUsd: inferredCost?.cacheWriteCostUsd ?? 0,
+				billedInputTokens: requestInputNoCacheTokens,
 				pricingModel: inferredCost?.canonicalModel ?? null,
 				cacheWriteTtl: inferredCost?.cacheWriteTtl ?? null,
 				status: r.status as string,

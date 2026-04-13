@@ -30,9 +30,59 @@ export interface TokenUsagePoint {
 	requests: number;
 }
 
+export interface TokenUsageBreakdownItem {
+	key: string;
+	inputTokens: number;
+	outputTokens: number;
+	cacheReadTokens: number;
+	cacheWriteTokens: number;
+	totalTokens: number;
+	requests: number;
+	avgTokensPerRequest: number;
+	sharePercent: number;
+}
+
+export interface TokenUsageConversationItem {
+	conversationId: string;
+	projectId: string;
+	agentSlug: string;
+	apiKeyIdentity: string;
+	inputTokens: number;
+	outputTokens: number;
+	cacheReadTokens: number;
+	cacheWriteTokens: number;
+	totalTokens: number;
+	requests: number;
+	avgTokensPerRequest: number;
+	sharePercent: number;
+	lastTimestamp: string | null;
+}
+
+export interface TokenUsageRunawayItem extends TokenUsageConversationItem {
+	suspiciousScore: number;
+	severity: 'high' | 'medium' | 'low';
+	requestsPerMinute: number;
+	avgToolCallsPerRequest: number;
+	avgToolResultsPerRequest: number;
+	contextEventsPerRequest: number;
+	inputGrowthRatio: number;
+	repeatedFsReadMax: number;
+	repeatedFsReadPath: string | null;
+	repeatedShellCommandMax: number;
+	repeatedShellCommand: string | null;
+	flags: string[];
+}
+
 export interface TokenUsageTrend {
 	granularity: 'hour' | 'day' | 'week';
 	points: TokenUsagePoint[];
+	breakdown: {
+		projects: TokenUsageBreakdownItem[];
+		agents: TokenUsageBreakdownItem[];
+		apiKeys: TokenUsageBreakdownItem[];
+		conversations: TokenUsageConversationItem[];
+		runaways: TokenUsageRunawayItem[];
+	};
 }
 
 // ─── Cache Efficiency ────────────────────────────────────────────────────────

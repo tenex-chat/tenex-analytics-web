@@ -1,6 +1,7 @@
 // GET /api/export/conversations — flat tabulated export of per-conversation aggregate data
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/database.js';
+import { buildAnthropicRequestCostSql } from '$lib/server/anthropic-pricing.js';
 
 function hasTable(name: string): boolean {
 	try {
@@ -119,7 +120,7 @@ export const GET: RequestHandler = ({ url }) => {
 				COALESCE(SUM(r.input_cache_read_tokens), 0) AS total_cache_read_tokens,
 				COALESCE(SUM(r.input_cache_write_tokens), 0) AS total_cache_write_tokens,
 				COALESCE(SUM(r.total_tokens), 0) AS total_tokens,
-				ROUND(COALESCE(SUM(r.cost_usd), 0), 6) AS total_cost_usd,
+				ROUND(COALESCE(SUM(${buildAnthropicRequestCostSql('r')}), 0), 6) AS total_cost_usd,
 				ROUND(COALESCE(AVG(r.total_tokens), 0), 1) AS avg_tokens_per_request,
 				COALESCE(MAX(r.total_tokens), 0) AS max_tokens_single_request
 			FROM llm_requests r

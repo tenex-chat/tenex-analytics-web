@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	allocatePromptCostByTokens,
+	buildAnthropicRequestCostSql,
 	inferAnthropicRequestCost,
 	normalizeAnthropicModel
 } from '$lib/server/anthropic-pricing.js';
@@ -20,18 +21,19 @@ describe('inferAnthropicRequestCost', () => {
 			provider: 'anthropic.messages',
 			model: 'claude-sonnet-4-6',
 			inputTokens: 10_000,
+			inputNoCacheTokens: 7_000,
 			outputTokens: 500,
 			cacheReadTokens: 8_000,
 			cacheWriteTokens: 2_000
 		});
 
 		expect(cost).not.toBeNull();
-		expect(cost?.inputCostUsd).toBeCloseTo(0.03, 6);
+		expect(cost?.inputCostUsd).toBeCloseTo(0.021, 6);
 		expect(cost?.cacheReadCostUsd).toBeCloseTo(0.0024, 6);
 		expect(cost?.cacheWriteCostUsd).toBeCloseTo(0.0075, 6);
 		expect(cost?.outputCostUsd).toBeCloseTo(0.0075, 6);
-		expect(cost?.promptCostUsd).toBeCloseTo(0.0399, 6);
-		expect(cost?.totalCostUsd).toBeCloseTo(0.0474, 6);
+		expect(cost?.promptCostUsd).toBeCloseTo(0.0309, 6);
+		expect(cost?.totalCostUsd).toBeCloseTo(0.0384, 6);
 		expect(cost?.cacheWriteTtl).toBe('5m');
 	});
 
@@ -66,6 +68,14 @@ describe('allocatePromptCostByTokens', () => {
 		expect(allocations[0]).toBeCloseTo(0.01, 6);
 		expect(allocations[1]).toBeCloseTo(0.03, 6);
 		expect(allocations[2]).toBeCloseTo(0.06, 6);
+	});
+});
+
+describe('buildAnthropicRequestCostSql', () => {
+	it('prioritizes recorded cost and falls back to inferred Anthropic cost', () => {
+		const sql = buildAnthropicRequestCostSql('llm_requests');
+		expect(sql).toContain('input_no_cache_tokens');
+		expect(sql).toContain('COALESCE(llm_requests.cost_usd, 0) <> 0');
 	});
 });
 

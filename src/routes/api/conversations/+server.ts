@@ -2,6 +2,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/database.js';
+import { buildAnthropicRequestCostSql } from '$lib/server/anthropic-pricing.js';
 
 function hasTable(name: string): boolean {
 	try {
@@ -49,7 +50,7 @@ export const GET: RequestHandler = ({ url }) => {
 				COALESCE(agent_slug, 'unknown') AS agentSlug,
 				COALESCE(project_id, 'unknown') AS projectId,
 				COALESCE(SUM(total_tokens), 0) AS totalTokens,
-				COALESCE(SUM(cost_usd), 0) AS totalCost,
+				COALESCE(SUM(${buildAnthropicRequestCostSql('llm_requests')}), 0) AS totalCost,
 				COUNT(*) AS requestCount,
 				MAX(started_at_ms) AS lastTimestampMs,
 				COALESCE(SUM(input_cache_read_tokens), 0) AS cacheReadTokens,

@@ -10,6 +10,7 @@ export interface AnthropicRequestUsage {
 	provider?: string | null;
 	model: string;
 	inputTokens: number;
+	inputNoCacheTokens?: number;
 	outputTokens: number;
 	cacheReadTokens: number;
 	cacheWriteTokens: number;
@@ -181,7 +182,10 @@ export function inferAnthropicRequestCost(
 	}
 
 	const pricing = ANTHROPIC_MODEL_PRICING[canonicalModel];
-	const inputCostUsd = usdFromTokens(usage.inputTokens, pricing.inputUsdPerMTok);
+	const inputTokens =
+		usage.inputNoCacheTokens ??
+		Math.max(0, usage.inputTokens - usage.cacheReadTokens - usage.cacheWriteTokens);
+	const inputCostUsd = usdFromTokens(inputTokens, pricing.inputUsdPerMTok);
 	const cacheReadCostUsd = usdFromTokens(usage.cacheReadTokens, pricing.cacheReadUsdPerMTok);
 	const cacheWriteCostUsd = usdFromTokens(usage.cacheWriteTokens, pricing.cacheWrite5mUsdPerMTok);
 	const outputCostUsd = usdFromTokens(usage.outputTokens, pricing.outputUsdPerMTok);
@@ -198,6 +202,39 @@ export function inferAnthropicRequestCost(
 		outputCostUsd,
 		totalCostUsd: promptCostUsd + outputCostUsd
 	};
+}
+
+export function buildAnthropicRequestCostSql(alias = 'llm_requests'): string {
+	const prefix = alias ? `${alias}.` : '';
+	const inputTokens = `COALESCE(${prefix}input_no_cache_tokens, MAX(0, COALESCE(${prefix}input_tokens, 0) - COALESCE(${prefix}input_cache_read_tokens, 0) - COALESCE(${prefix}input_cache_write_tokens, 0)))`;
+	const readTokens = `COALESCE(${prefix}input_cache_read_tokens, 0)`;
+	const writeTokens = `COALESCE(${prefix}input_cache_write_tokens, 0)`;
+	const outputTokens = `COALESCE(${prefix}output_tokens, 0)`;
+
+	const model = `LOWER(COALESCE(${prefix}model, ''))`;
+	const pricingCase = `CASE
+		WHEN ${model} IN ('claude-opus-4-6', 'claude-opus-4-5') THEN
+			((${inputTokens}) * 5 + (${readTokens}) * 0.5 + (${writeTokens}) * 6.25 + (${outputTokens}) * 25) / 1000000.0
+		WHEN ${model} IN ('claude-opus-4-1', 'claude-opus-4') THEN
+			((${inputTokens}) * 15 + (${readTokens}) * 1.5 + (${writeTokens}) * 18.75 + (${outputTokens}) * 75) / 1000000.0
+		WHEN ${model} IN ('claude-sonnet-4-6', 'claude-sonnet-4-5', 'claude-sonnet-4', 'claude-sonnet-3-7') THEN
+			((${inputTokens}) * 3 + (${readTokens}) * 0.3 + (${writeTokens}) * 3.75 + (${outputTokens}) * 15) / 1000000.0
+		WHEN ${model} IN ('claude-haiku-4-5') THEN
+			((${inputTokens}) * 1 + (${readTokens}) * 0.1 + (${writeTokens}) * 1.25 + (${outputTokens}) * 5) / 1000000.0
+		WHEN ${model} IN ('claude-haiku-3-5') THEN
+			((${inputTokens}) * 0.8 + (${readTokens}) * 0.08 + (${writeTokens}) * 1 + (${outputTokens}) * 4) / 1000000.0
+		WHEN ${model} IN ('claude-opus-3') THEN
+			((${inputTokens}) * 15 + (${readTokens}) * 1.5 + (${writeTokens}) * 18.75 + (${outputTokens}) * 75) / 1000000.0
+		WHEN ${model} IN ('claude-haiku-3') THEN
+			((${inputTokens}) * 0.25 + (${readTokens}) * 0.03 + (${writeTokens}) * 0.3 + (${outputTokens}) * 1.25) / 1000000.0
+		ELSE 0
+	END`;
+
+	return `CASE
+		WHEN COALESCE(${prefix}cost_usd, 0) <> 0 THEN COALESCE(${prefix}cost_usd, 0)
+		WHEN COALESCE(${prefix}provider, '') LIKE 'anthropic%' THEN COALESCE(${pricingCase}, 0)
+		ELSE 0
+	END`;
 }
 
 export function allocatePromptCostByTokens(

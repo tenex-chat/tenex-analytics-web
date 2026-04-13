@@ -11,6 +11,7 @@
 		role: string;
 		classification: string;
 		tokenCount: number;
+		billedInputTokens: number;
 		contentPreview: string;
 		systemReminderCount: number;
 		toolName?: string | null;
@@ -22,6 +23,7 @@
 		provider: string;
 		model: string;
 		inputTokens: number;
+		inputNoCacheTokens: number;
 		outputTokens: number;
 		cacheReadTokens: number;
 		cacheWriteTokens: number;
@@ -108,6 +110,14 @@
 
 	function requestReminderCount(req: LLMRequest): number {
 		return req.messages.reduce((s, m) => s + (m.systemReminderCount ?? 0), 0);
+	}
+
+	function isCacheDropAfterHit(index: number): boolean {
+		if (index <= 0) return false;
+		const current = requests[index];
+		const previous = requests[index - 1];
+		if (!current || !previous) return false;
+		return previous.cacheReadTokens > 0 && current.cacheReadTokens === 0;
 	}
 
 	function requestBadge(req: LLMRequest): { tone: string; label: string } | null {
@@ -546,9 +556,9 @@
 			<p class="empty">No requests found</p>
 		{:else}
 			<div class="timeline">
-				{#each requests as req}
+				{#each requests as req, index}
 					{@const badge = requestBadge(req)}
-					<div class="request-card">
+					<div class="request-card" class:cache-drop={isCacheDropAfterHit(index)}>
 						<button class="request-header" onclick={() => toggleExpand(req.id)}>
 							<div class="req-meta">
 								<span class="req-time">{req.timestamp?.slice(0, 19) ?? '—'}</span>
@@ -559,6 +569,9 @@
 							{/if}
 							<div class="req-tokens">
 								<span class="token-pill in">↑ {formatNumber(req.inputTokens)}</span>
+								<span class="token-pill billed">
+									↑ billed {formatNumber(req.inputNoCacheTokens ?? req.inputTokens)}
+								</span>
 								<span class="token-pill out">↓ {formatNumber(req.outputTokens)}</span>
 								{#if req.cacheReadTokens > 0}
 									<span class="token-pill cache">⚡ {formatNumber(req.cacheReadTokens)}</span>
@@ -600,22 +613,26 @@
 									<table class="msg-table">
 										<thead>
 											<tr>
+												<th class="num">#</th>
 												<th>Role</th>
 												<th>Classification</th>
-												<th class="num">Tokens</th>
+												<th class="num">Input Tokens</th>
+												<th class="num">Billed Input</th>
 												<th class="num">Estimated Prompt Cost</th>
 												<th>Preview</th>
 											</tr>
 										</thead>
 										<tbody>
-											{#each req.messages as msg}
+											{#each req.messages as msg, messageIndex}
 												<tr>
+													<td class="num dim">{messageIndex + 1}</td>
 													<td><span class="role-badge role-{msg.role}">{msg.role}</span></td>
 													<td class="dim">
 														{msg.classification || '—'}{#if msg.toolName}
 															· {msg.toolName}{/if}
 													</td>
 													<td class="num">{formatNumber(msg.tokenCount)}</td>
+													<td class="num">{formatNumber(msg.billedInputTokens)}</td>
 													<td class="num">
 														{#if req.costSource === 'inferred'}
 															{formatCost(msg.promptCostUsd, 4)}
@@ -808,6 +825,10 @@
 		border-radius: var(--radius);
 		overflow: hidden;
 	}
+	.request-card.cache-drop {
+		border-color: color-mix(in srgb, var(--red) 35%, var(--border));
+		box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--red) 12%, transparent);
+	}
 	.request-header {
 		width: 100%;
 		display: flex;
@@ -854,6 +875,11 @@
 		background: var(--surface);
 		border: 1px solid var(--border);
 		color: var(--text);
+	}
+	.token-pill.billed {
+		background: var(--surface);
+		border: 1px solid var(--border);
+		color: var(--muted);
 	}
 	.token-pill.out {
 		background: var(--surface);

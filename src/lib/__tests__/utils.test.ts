@@ -8,25 +8,25 @@ describe('formatNumber', () => {
 		expect(formatNumber(999)).toBe('999');
 	});
 
-	it('formats thousands with K suffix', () => {
-		expect(formatNumber(1_000)).toBe('1.0K');
-		expect(formatNumber(1_500)).toBe('1.5K');
-		expect(formatNumber(999_999)).toBe('1000.0K');
+	it('formats thousands with locale separators', () => {
+		expect(formatNumber(1_000)).toBe('1,000');
+		expect(formatNumber(1_500)).toBe('1,500');
+		expect(formatNumber(999_999)).toBe('999,999');
 	});
 
-	it('formats millions with M suffix', () => {
-		expect(formatNumber(1_000_000)).toBe('1.0M');
-		expect(formatNumber(2_500_000)).toBe('2.5M');
+	it('formats millions with locale separators', () => {
+		expect(formatNumber(1_000_000)).toBe('1,000,000');
+		expect(formatNumber(2_500_000)).toBe('2,500,000');
 	});
 });
 
 describe('formatCost', () => {
 	it('formats zero cost', () => {
-		expect(formatCost(0)).toBe('$0.0000');
+		expect(formatCost(0)).toBe('$0.00');
 	});
 
-	it('formats small costs with 4 decimal places', () => {
-		expect(formatCost(0.0012)).toBe('$0.0012');
+	it('shows very small non-zero costs as less than one cent', () => {
+		expect(formatCost(0.0012)).toBe('<$0.01');
 	});
 
 	it('formats larger costs with 2 decimal places', () => {

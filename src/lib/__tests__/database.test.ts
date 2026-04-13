@@ -4,7 +4,7 @@ import { buildRequestFilter, parseRequestFilters } from '$lib/server/database.js
 describe('parseRequestFilters', () => {
 	it('reads the standard analytics query params', () => {
 		const url = new URL(
-			'http://localhost/api/telemetry?from=2026-03-01&to=2026-03-31&project=alpha&agent=builder&provider=openai&model=gpt-4o'
+			'http://localhost/api/telemetry?from=2026-03-01&to=2026-03-31&project=alpha&agent=builder&provider=openai&model=gpt-4o&apiKey=primary'
 		);
 
 		expect(parseRequestFilters(url)).toEqual({
@@ -13,20 +13,22 @@ describe('parseRequestFilters', () => {
 			project: 'alpha',
 			agent: 'builder',
 			provider: 'openai',
-			model: 'gpt-4o'
+			model: 'gpt-4o',
+			apiKey: 'primary'
 		});
 	});
 });
 
 describe('buildRequestFilter', () => {
-	it('includes date, project, agent, provider, model, and success status filters', () => {
+	it('includes date, project, agent, provider, model, apiKey, and success status filters', () => {
 		const result = buildRequestFilter({
 			from: '2026-03-01',
 			to: '2026-03-31',
 			project: 'alpha',
 			agent: 'builder',
 			provider: 'openai',
-			model: 'gpt-4o'
+			model: 'gpt-4o',
+			apiKey: 'primary'
 		});
 
 		expect(result.clause).toContain("status = 'success'");
@@ -36,10 +38,12 @@ describe('buildRequestFilter', () => {
 		expect(result.clause).toContain('agent_slug = @agent');
 		expect(result.clause).toContain('provider = @provider');
 		expect(result.clause).toContain('model = @model');
+		expect(result.clause).toContain('api_key_identity = @apiKey');
 		expect(result.params.project).toBe('alpha');
 		expect(result.params.agent).toBe('builder');
 		expect(result.params.provider).toBe('openai');
 		expect(result.params.model).toBe('gpt-4o');
+		expect(result.params.apiKey).toBe('primary');
 	});
 
 	it('can target a different date column and omit unsupported filters', () => {

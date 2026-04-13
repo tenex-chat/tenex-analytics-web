@@ -93,6 +93,10 @@ export interface SummaryParams extends DateRangeParams {
 	apiKey?: string;
 }
 
+export interface TokenTrendParams extends SummaryParams {
+	granularity?: GranularityParams['granularity'];
+}
+
 /**
  * GET /api/telemetry/summary
  * Returns aggregated summary metrics: total tokens, cache %, total cost
@@ -111,11 +115,13 @@ export async function getTelemetrySummary(params?: SummaryParams): Promise<Telem
  * GET /api/tokens
  * Returns token usage trend data, optionally filtered by date range and granularity
  */
-export async function getTokenTrends(params?: GranularityParams): Promise<TokenUsageTrend> {
+export async function getTokenTrends(params?: TokenTrendParams): Promise<TokenUsageTrend> {
 	const queryParams: Record<string, string> = {};
-	if (params?.from) queryParams.from = params.from;
-	if (params?.to) queryParams.to = params.to;
-	if (params?.granularity) queryParams.granularity = params.granularity;
+	if (params) {
+		Object.entries(params).forEach(([key, value]) => {
+			if (value !== undefined && value !== '') queryParams[key] = value as string;
+		});
+	}
 	return apiFetch<TokenUsageTrend>('/api/tokens', queryParams);
 }
 

@@ -4,6 +4,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb, buildDateFilter, parseDateRange, hasTelemetryTable } from '$lib/server/database.js';
+import { buildAnthropicRequestCostSql } from '$lib/server/anthropic-pricing.js';
 
 export const GET: RequestHandler = ({ url }) => {
 	if (!hasTelemetryTable()) {
@@ -35,7 +36,7 @@ export const GET: RequestHandler = ({ url }) => {
 			COALESCE(SUM(input_cache_read_tokens), 0)     AS totalCacheReadTokens,
 			COALESCE(SUM(input_cache_write_tokens), 0)    AS totalCacheWriteTokens,
 			COALESCE(SUM(total_tokens), 0)                AS totalTokens,
-			COALESCE(SUM(cost_usd), 0)                    AS totalCostUsd,
+			COALESCE(SUM(${buildAnthropicRequestCostSql('llm_requests')}), 0) AS totalCostUsd,
 			COUNT(*)                                      AS totalRequests,
 			MIN(date(started_at_ms/1000, 'unixepoch'))    AS dateFrom,
 			MAX(date(started_at_ms/1000, 'unixepoch'))    AS dateTo
@@ -177,7 +178,7 @@ export const GET: RequestHandler = ({ url }) => {
 			`
 		SELECT
 			date(started_at_ms/1000, 'unixepoch')         AS date,
-			COALESCE(SUM(cost_usd), 0)                    AS totalCostUsd,
+			COALESCE(SUM(${buildAnthropicRequestCostSql('llm_requests')}), 0) AS totalCostUsd,
 			COUNT(*)                                      AS requests
 		FROM llm_requests
 		${statusClause}
@@ -193,7 +194,7 @@ export const GET: RequestHandler = ({ url }) => {
 			`
 		SELECT
 			COALESCE(model, 'unknown')                    AS model,
-			COALESCE(SUM(cost_usd), 0)                    AS totalCostUsd,
+			COALESCE(SUM(${buildAnthropicRequestCostSql('llm_requests')}), 0) AS totalCostUsd,
 			COUNT(*)                                      AS requests
 		FROM llm_requests
 		${statusClause}

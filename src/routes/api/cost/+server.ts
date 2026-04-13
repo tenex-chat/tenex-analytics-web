@@ -9,6 +9,7 @@ import {
 	parseEntityFilters,
 	buildEntityFilter
 } from '$lib/server/database.js';
+import { buildAnthropicRequestCostSql } from '$lib/server/anthropic-pricing.js';
 
 function hasTable(name: string): boolean {
 	try {
@@ -46,7 +47,7 @@ export const GET: RequestHandler = ({ url }) => {
 					`
 			SELECT
 				date(started_at_ms/1000, 'unixepoch') AS date,
-				COALESCE(SUM(cost_usd), 0) AS totalCost
+				COALESCE(SUM(${buildAnthropicRequestCostSql('llm_requests')}), 0) AS totalCost
 			FROM llm_requests
 			${clause_}
 			GROUP BY date
@@ -62,7 +63,7 @@ export const GET: RequestHandler = ({ url }) => {
 					`
 			SELECT
 				COALESCE(model, 'unknown') AS model,
-				COALESCE(SUM(cost_usd), 0) AS totalCost
+				COALESCE(SUM(${buildAnthropicRequestCostSql('llm_requests')}), 0) AS totalCost
 			FROM llm_requests
 			${clause_}
 			GROUP BY model
@@ -78,7 +79,7 @@ export const GET: RequestHandler = ({ url }) => {
 					`
 			SELECT
 				COALESCE(agent_slug, 'unknown') AS agentSlug,
-				COALESCE(SUM(cost_usd), 0) AS totalCost
+				COALESCE(SUM(${buildAnthropicRequestCostSql('llm_requests')}), 0) AS totalCost
 			FROM llm_requests
 			${clause_}
 			GROUP BY agent_slug
@@ -94,7 +95,7 @@ export const GET: RequestHandler = ({ url }) => {
 					`
 			SELECT
 				COALESCE(api_key_identity, 'unknown') AS apiKeyIdentity,
-				COALESCE(SUM(cost_usd), 0) AS totalCost
+				COALESCE(SUM(${buildAnthropicRequestCostSql('llm_requests')}), 0) AS totalCost
 			FROM llm_requests
 			${clause_}
 			GROUP BY api_key_identity
