@@ -260,6 +260,7 @@ export const GET: RequestHandler = ({ url }) => {
 	}));
 
 	// ── Token growth (first vs last request tokens per conversation, by day) ──
+	// Optimized: use subqueries with MIN/MAX instead of multiple window functions
 	const tokenGrowthRows = db
 		.prepare(
 			`
@@ -269,15 +270,18 @@ export const GET: RequestHandler = ({ url }) => {
 			AVG(last_tokens)  AS avgLastTokens
 		FROM (
 			SELECT
-				conversation_id,
-				MIN(started_at_ms) OVER (PARTITION BY conversation_id) AS conv_start_ms,
-				FIRST_VALUE(total_tokens) OVER (PARTITION BY conversation_id ORDER BY started_at_ms ASC)  AS first_tokens,
-				FIRST_VALUE(total_tokens) OVER (PARTITION BY conversation_id ORDER BY started_at_ms DESC) AS last_tokens,
-				ROW_NUMBER() OVER (PARTITION BY conversation_id ORDER BY started_at_ms DESC) AS row_num
-			FROM llm_requests
+				r.conversation_id,
+				MIN(r.started_at_ms) AS conv_start_ms,
+				(SELECT total_tokens FROM llm_requests
+				 WHERE conversation_id = r.conversation_id AND ${extraConditions.join(' AND ')}
+				 ORDER BY started_at_ms ASC LIMIT 1) AS first_tokens,
+				(SELECT total_tokens FROM llm_requests
+				 WHERE conversation_id = r.conversation_id AND ${extraConditions.join(' AND ')}
+				 ORDER BY started_at_ms DESC LIMIT 1) AS last_tokens
+			FROM llm_requests r
 			${whereClause}
+			GROUP BY r.conversation_id
 		)
-		WHERE row_num = 1
 		GROUP BY date
 		ORDER BY date ASC
 	`
@@ -389,9 +393,18 @@ export const GET: RequestHandler = ({ url }) => {
 
 	// ── Token breakdown by position (stacked by message classification) ──────
 	// Joins llm_request_messages to get per-classification token averages
+	// Optimized: use CTE to pre-compute positions, then join only needed messages
 	const tokenBreakdownRows = db
 		.prepare(
 			`
+		WITH ranked_requests AS (
+			SELECT
+				request_id,
+				conversation_id,
+				ROW_NUMBER() OVER (PARTITION BY conversation_id ORDER BY started_at_ms ASC) AS position
+			FROM llm_requests
+			${whereClause}
+		)
 		SELECT
 			position,
 			AVG(system_tok)      AS avgSystem,
@@ -401,19 +414,17 @@ export const GET: RequestHandler = ({ url }) => {
 			AVG(tool_result_tok) AS avgToolResult
 		FROM (
 			SELECT
-				r.conversation_id,
-				ROW_NUMBER() OVER (PARTITION BY r.conversation_id ORDER BY r.started_at_ms ASC) AS position,
+				r.position,
 				SUM(CASE WHEN m.classification = 'system'      THEN COALESCE(m.estimated_tokens, 0) ELSE 0 END) AS system_tok,
 				SUM(CASE WHEN m.classification = 'user'        THEN COALESCE(m.estimated_tokens, 0) ELSE 0 END) AS user_tok,
 				SUM(CASE WHEN m.classification = 'assistant'   THEN COALESCE(m.estimated_tokens, 0) ELSE 0 END) AS assistant_tok,
 				SUM(CASE WHEN m.classification = 'tool-call'   THEN COALESCE(m.estimated_tokens, 0) ELSE 0 END) AS tool_call_tok,
 				SUM(CASE WHEN m.classification = 'tool-result' THEN COALESCE(m.estimated_tokens, 0) ELSE 0 END) AS tool_result_tok
-			FROM llm_requests r
+			FROM ranked_requests r
 			JOIN llm_request_messages m ON m.request_id = r.request_id
-			${whereClause}
-			GROUP BY r.conversation_id, r.request_id
+			WHERE r.position <= 15
+			GROUP BY r.conversation_id, r.request_id, r.position
 		)
-		WHERE position <= 15
 		GROUP BY position
 		ORDER BY position ASC
 	`

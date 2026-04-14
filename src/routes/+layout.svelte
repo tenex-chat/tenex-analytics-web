@@ -17,9 +17,6 @@
 			<a href="/conversations" class:active={$page.url.pathname === '/conversations'}
 				>Conversations</a
 			>
-			<a href="/conversation-stats" class:active={$page.url.pathname === '/conversation-stats'}
-				>Conv Stats</a
-			>
 		</nav>
 	</div>
 </header>

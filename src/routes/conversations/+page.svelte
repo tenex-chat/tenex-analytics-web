@@ -358,7 +358,10 @@
 					</thead>
 					<tbody>
 						{#each topExpensive as conv}
-							<tr>
+							<tr
+								class="clickable"
+								onclick={() => goto(`/conversations/${encodeURIComponent(conv.conversationId)}`)}
+							>
 								<td class="mono">{conv.conversationId.slice(0, 4)}</td>
 								<td>{conv.agentSlug || '—'}</td>
 								<td>{conv.projectId || '—'}</td>
